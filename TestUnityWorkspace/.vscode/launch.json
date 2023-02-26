@@ -1,0 +1,21 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Unity Editor",
+            "type": "unity",
+            "path": "${workspaceFolder}/Library/EditorInstance.json",
+            "request": "launch"
+        },
+        {
+            "type": "vstu",
+            "request": "attach",
+            "name": "vstu",
+            // "adapterPort": 4711,
+            "projectPath": "${workspaceFolder}"
+        },
+    ]
+}

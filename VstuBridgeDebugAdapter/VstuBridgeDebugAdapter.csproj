@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <_VstuPath>C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>6-recommended</AnalysisLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <AnalysisLevel>6-none</AnalysisLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.Interop.10.0" Version="17.4.33103.184" />
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.InteropA" Version="17.4.33103.184" />
+    <PackageReference Include="Microsoft.VisualStudio.Shared.VSCodeDebugProtocol" Version="17.2.60629.1" />
+    <Reference Include="$(_VstuPath)/SyntaxTree.VisualStudio.Unity.Common.dll" />
+    <Reference Include="$(_VstuPath)/SyntaxTree.VisualStudio.Unity.Messaging.dll" />
+    <Reference Include="$(_VstuPath)/SyntaxTree.Mono.Debugger.Soft.dll" />
+  </ItemGroup>
+
+</Project>

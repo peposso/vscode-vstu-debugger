@@ -1,0 +1,82 @@
+{
+  "name": "vscode-vstu-debugger",
+  "displayName": "VSTU Debugger for VSCode",
+  "description": "",
+  "version": "0.0.1",
+  "publisher": "peposso",
+  "author": {
+    "name": "peposso"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Debuggers"
+  ],
+  "activationEvents": [
+    "onDebugResolve:vstu",
+    "onDebugDynamicConfigurations:vstu"
+  ],
+  "main": "./src/extension.js",
+  "workspaceTrust": {
+    "request": "never"
+  },
+  "contributes": {
+    "commands": [
+    ],
+    "breakpoints": [
+      {
+        "language": "csharp"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "vstu",
+        "languages": [
+          "csharp"
+        ],
+        "label": "VSTU Debugger",
+        "configurationAttributes": {
+          "attach": {
+            "required": [],
+            "properties": {
+              "adapterPort": {
+                "type": "number",
+                "description": "The port of the already running Debug Adapter Server.",
+                "default": 0
+              },
+              "projectPath": {
+                "type": "string",
+                "description": "The path to the Unity project to be debugged.",
+                "default": "${workspaceFolder}"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "vstu",
+            "request": "attach"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Unity Editor (VSTU)",
+            "description": "Unity Debug using VSTU",
+            "body": {
+              "type": "vstu",
+              "request": "attach",
+              "projectPath": "${workspaceFolder}"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {},
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "16.x"
+  }
+}
