@@ -1,15 +1,16 @@
-# VSTU Debugger for VSCode
+# Unofficial VSTU Unity Debugger for VSCode
 
-This project is very experimental and still under development.
+This project is highly experimental and still under development.
 
-Unity Debugger for VSCode using 'Visual Studio Tools for Unity (VSTU)'.
+The extension works as a stable Unity debugger based on "Visual Studio Tools for Unity (VSTU)".
 
 ## Requirements
 
 * .Net 7.0 SDK
 * Visual Studio Tools for Unity
-* Visual Studio 2022
 
 ## License
 
-MIT
+To use VSTU, you must accept MICROSOFT SOFTWARE LICENSE TERMS.
+
+The code for this project itself is licensed under MIT.
