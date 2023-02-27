@@ -5,17 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Unity Editor (VSTU)",
+            "type": "vstu",
+            "request": "attach",
+            "projectPath": "${workspaceFolder}"
+        },
+        {
             "name": "Unity Editor",
             "type": "unity",
             "path": "${workspaceFolder}/Library/EditorInstance.json",
             "request": "launch"
-        },
-        {
-            "type": "vstu",
-            "request": "attach",
-            "name": "vstu",
-            // "adapterPort": 4711,
-            "projectPath": "${workspaceFolder}"
-        },
+        }
     ]
 }

@@ -314,15 +314,11 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
 
     public void OnDebuggerConnectionFailed(Exception? e) => listener.OnDebuggerConnectionFailed(e);
 
-    public void OnGracefulSessionTermination()
-    {
-        throw new NotImplementedException();
-    }
+    public void OnGracefulSessionTermination() => listener.OnSessionTermination(null);
 
-    public void OnUnexpectedSessionTermination(Exception? e)
-    {
-        throw new NotImplementedException();
-    }
+    public void OnUnexpectedSessionTermination(Exception? e) => listener.OnSessionTermination(e);
+
+    public void OnUnexpectedSessionTermination() => listener.OnSessionTermination(null);
 
     public object GetExtendedInfo(Guid guidExtendedInfo, IDebugProperty3 property)
     {
@@ -474,8 +470,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
     static int GetThreadId(IDebugThread2 thread)
     {
         thread.GetThreadId(out var tid);
-        // cut off high 16bit
-        return (int)(ushort)tid;
+        return (int)(0x7fff_ffff & tid);
     }
 
     internal void SetBreakpoint(string path, int line, int column)
@@ -519,6 +514,17 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         info.PendingBreakpoint.Delete();
         breakpoints.TryRemove((path, line, column), out _);
         pendingBreakpoints.TryRemove(info.PendingBreakpoint, out _);
+    }
+
+    public void RefreshExceptionSettings()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnBreakpointConditionError(BreakpointConditionError error, out string message, out enum_MESSAGETYPE messageType)
+    {
+        message = $"OnBreakpointConditionError: {error}";
+        messageType = enum_MESSAGETYPE.MT_OUTPUTSTRING;
     }
 }
 

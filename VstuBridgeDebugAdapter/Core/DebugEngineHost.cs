@@ -24,6 +24,9 @@ sealed class DebugEngineHost : IDebugEngineHost
     public object GetExtendedInfo(Guid guidExtendedInfo, IDebugProperty3 property)
         => session.GetExtendedInfo(guidExtendedInfo, property);
 
+    public void OnBreakpointConditionError(BreakpointConditionError error, out string message, out enum_MESSAGETYPE messageType)
+        => session.OnBreakpointConditionError(error, out message, out messageType);
+
     public void OnDebuggerConnected()
         => session.OnDebuggerConnected();
 
@@ -35,6 +38,12 @@ sealed class DebugEngineHost : IDebugEngineHost
 
     public void OnUnexpectedSessionTermination(Exception? e)
         => session.OnUnexpectedSessionTermination(e);
+
+    public void OnUnexpectedSessionTermination()
+        => session.OnUnexpectedSessionTermination();
+
+    public void RefreshExceptionSettings()
+        => session.RefreshExceptionSettings();
 
     public bool TryGetExceptionState(string fullName, out enum_EXCEPTION_STATE state)
         => session.TryGetExceptionState(fullName, out state);

@@ -1,8 +1,6 @@
-using System.Globalization;
-using System.Net;
-using System.Text.Json.Nodes;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
+using VstuBridgeDebugAdaptor.Helpers;
 using Thread = Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages.Thread;
 
 namespace VstuBridgeDebugAdaptor.Core;
@@ -354,6 +352,18 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             HitBreakpointIds = ids,
             AllThreadsStopped = true,
         });
+    }
+
+    public void OnSessionTermination(Exception? e)
+    {
+        logger.WriteLine("OnSessionTermination");
+        if (e is not null)
+        {
+            logger.WriteLine(e.ToString());
+        }
+
+        logger.Flush();
+        Protocol.Stop();
     }
 
     Breakpoint? FindBreakpoint(string file, int line, int column)

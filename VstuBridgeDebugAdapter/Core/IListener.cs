@@ -22,6 +22,8 @@ interface IListener
 
     void OnAssemblyLoaded(string assemblyUri);
 
+    void OnSessionTermination(Exception? e);
+
     void OnBreakpointVerified(string file, int line, int column, bool verified);
 
     void OnStoppedByPause(int threadId);

@@ -1,11 +1,8 @@
 using System.Globalization;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Text.Json.Nodes;
-using Microsoft.VisualStudio.Debugger.Interop;
-using SyntaxTree.VisualStudio.Unity.Debugger;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Helpers;
 
 static class UnityDiscoveryHelper
 {
