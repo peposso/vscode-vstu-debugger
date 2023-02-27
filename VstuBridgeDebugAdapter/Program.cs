@@ -46,6 +46,11 @@ Console.CancelKeyPress += (sender, e) =>
         adapter?.Terminate();
 };
 
+logWriter.WriteLine($"ProcessId: {Environment.ProcessId}");
+logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine).Assembly.FullName}");
+logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Messaging.UnityProcess).Assembly.FullName}");
+logWriter.WriteLine($"Using: {typeof(Mono.Debugger.Soft.VirtualMachine).Assembly.FullName}");
+
 if (port == 0)
 {
     var adapter = new VstuDebugAdapter(Console.OpenStandardInput(), Console.OpenStandardOutput(), logWriter);
@@ -55,7 +60,6 @@ if (port == 0)
     return;
 }
 
-logWriter.WriteLine($"ProcessId: {Environment.ProcessId}");
 logWriter.WriteLine($"Waiting for connections on port {port}...");
 logWriter.Flush();
 

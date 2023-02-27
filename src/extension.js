@@ -24,16 +24,25 @@ class DebugAdapterFactory {
         }
 
         if (!executable) {
+            const conf = vscode.workspace.getConfiguration('vstu-debugger');
+            /** @type {string?} */
+            const vstuPath = conf.get("vstuPath");
+
             const command = "dotnet";
             const args = [
                 "run",
                 "--project",
                 "VstuBridgeDebugAdapter/VstuBridgeDebugAdapter.csproj",
             ];
+
             const options = {
                 cwd: this._context.extensionPath,
-                env: { "envVariable": "some value" }
+                env: {},
             };
+            if (vstuPath) {
+                options.env["CONF_VSTU_PATH"] = vstuPath;
+            }
+
             executable = new vscode.DebugAdapterExecutable(command, args, options);
         }
 
@@ -51,17 +60,18 @@ class DebugConfigurationProvider {
      * e.g. add all missing attributes to the debug configuration.
      * @param {vscode.WorkspaceFolder | undefined} folder
      * @param {vscode.DebugConfiguration} config
-     * @param {vscode.CancellationToken} token
+     * @param {vscode.CancellationToken} _token
      */
-    resolveDebugConfiguration(folder, config, token) {
+    resolveDebugConfiguration(folder, config, _token) {
 
         // if launch.json is missing or empty
         if (!config.type && !config.request && !config.name) {
             const editor = vscode.window.activeTextEditor;
             if (editor && editor.document.languageId === 'csharp') {
+                config.name = 'Unity Editor (VSTU)';
                 config.type = 'vstu';
-                config.name = 'Attach Unity using VSTU';
                 config.request = 'attach';
+                config.projectPath = '${workspaceFolder}';
             }
         }
 
@@ -98,12 +108,34 @@ function activate(context) {
     const factory = new DebugAdapterFactory(context);
     context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('vstu', factory));
 
-    const command = 'myExtension.sayHello';
-    const commandHandler = (name) => {
-        console.log(`Hello ${name}!!!`);
-    };
-
-    context.subscriptions.push(vscode.commands.registerCommand(command, commandHandler));
+    /** @type {vscode.OutputChannel?} */
+    let output;
+    vscode.debug.registerDebugAdapterTrackerFactory('vstu', {
+        /**
+         * @param {vscode.DebugSession} session
+        */
+        createDebugAdapterTracker(session) {
+            output = output || vscode.window.createOutputChannel("VSTU Debugger");
+            return {
+                onWillStartSession() {
+                    output.appendLine(`onWillStartSession: ${session.id}`)
+                },
+                onWillReceiveMessage(_message) {
+                },
+                onDidSendMessage(_message) {
+                },
+                onWillStopSession() {
+                    output.appendLine(`onWillStopSession: ${session.id}`)
+                },
+                onError(error) {
+                    output.appendLine(`onError: ${error}`)
+                },
+                onExit(code, signal) {
+                    output.appendLine(`onExit: code:${code}, signal:${signal}`)
+                },
+            };
+        }
+    });
 }
 
 // This method is called when your extension is deactivated
