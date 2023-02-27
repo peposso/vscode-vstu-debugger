@@ -1,6 +1,6 @@
 {
   "name": "vscode-vstu-debugger",
-  "displayName": "VSTU Debugger for VSCode",
+  "displayName": "Unofficial VSTU Unity Debugger",
   "description": "",
   "version": "0.0.1",
   "publisher": "peposso",
@@ -25,6 +25,16 @@
   "contributes": {
     "commands": [
     ],
+    "configuration": {
+      "title": "VSTU Unity Debugger",
+      "properties": {
+        "vstu-debugger.vstuPath": {
+          "type": "string",
+          "default": "",
+          "description": "The path to 'Visual Studio Tools for Unity' folder."
+        }
+      }
+    },
     "breakpoints": [
       {
         "language": "csharp"
@@ -36,7 +46,7 @@
         "languages": [
           "csharp"
         ],
-        "label": "VSTU Debugger",
+        "label": "VSTU Unity Debugger",
         "configurationAttributes": {
           "attach": {
             "required": [],
@@ -65,9 +75,10 @@
             "label": "Unity Editor (VSTU)",
             "description": "Unity Debug using VSTU",
             "body": {
+              "name": "Unity Editor (VSTU)",
               "type": "vstu",
               "request": "attach",
-              "projectPath": "${workspaceFolder}"
+              "projectPath": "^\"\\${workspaceFolder}\""
             }
           }
         ]
