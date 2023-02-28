@@ -7,9 +7,9 @@ namespace VstuBridgeDebugAdaptor.Core;
 
 sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 {
-    private readonly TextWriter logger;
+    readonly TextWriter logger;
+    readonly Dictionary<string, List<Breakpoint>> breakpointsBySource = new();
     DebuggerSession session = null!;
-    Dictionary<string, List<Breakpoint>> breakpointsBySource = new();
     int breakpointIdCounter;
 
     public VstuDebugAdapter(Stream input, Stream output, TextWriter logger)
@@ -56,14 +56,15 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             SupportsConfigurationDoneRequest = false,
             SupportsFunctionBreakpoints = false,
 
-            SupportsConditionalBreakpoints = true,
-            SupportsEvaluateForHovers = false,
+            SupportsConditionalBreakpoints = false,
+            SupportsEvaluateForHovers = true,
 
+            SupportsExceptionConditions = false,
             SupportsExceptionOptions = false,
 
-            SupportsHitConditionalBreakpoints = true,
+            SupportsHitConditionalBreakpoints = false,
 
-            SupportsSetVariable = true,
+            SupportsSetVariable = false,
             SupportsTerminateRequest = true,
 
             ExceptionBreakpointFilters = new(),
@@ -252,6 +253,23 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
     {
         session.StepOut(arguments.ThreadId);
         return new();
+    }
+
+    protected override EvaluateResponse HandleEvaluateRequest(EvaluateArguments arguments)
+    {
+        var frameId = arguments.FrameId ?? 0;
+        if (frameId == 0)
+        {
+            return new() { Result = "" };
+        }
+
+        var expr = arguments.Expression;
+        var result = session.EvaluateExpression(frameId, expr);
+        return new()
+        {
+            Result = result.Value,
+            VariablesReference = result.VariablesReference,
+        };
     }
 
     void SendOutput(string text, bool isError = false)

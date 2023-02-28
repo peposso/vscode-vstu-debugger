@@ -13,21 +13,11 @@
     <!-- <_VstuPath
       Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Preview\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')"
       >C:\Program Files\Microsoft Visual Studio\2022\Preview\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath> -->
-    <_VstuPath
-      Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')"
-      >C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
-    <_VstuPath
-      Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')"
-      >C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
-    <_VstuPath
-      Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')"
-      >C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
-    <_VstuPath
-      Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')"
-      >C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
-    <_VstuPath
-      Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('OSX')) AND Exists('/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity')"
-      >/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity</_VstuPath>
+    <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')">C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
+    <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')">C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
+    <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')">C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
+    <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')">C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
+    <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('OSX')) AND Exists('/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity')">/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity</_VstuPath>
   </PropertyGroup>
 
   <Target Name="CleanVstu" BeforeTargets="BeforeBuild">
@@ -43,6 +33,7 @@
     <AnalysisLevel>6-none</AnalysisLevel>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" />
     <PackageReference Include="Microsoft.VisualStudio.Debugger.Interop.10.0" Version="17.4.33103.184" />
     <PackageReference Include="Microsoft.VisualStudio.Debugger.InteropA" Version="17.4.33103.184" />
     <PackageReference Include="Microsoft.VisualStudio.Shared.VSCodeDebugProtocol" Version="17.2.60629.1" />

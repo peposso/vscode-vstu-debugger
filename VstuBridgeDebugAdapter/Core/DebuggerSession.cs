@@ -526,6 +526,42 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         message = $"OnBreakpointConditionError: {error}";
         messageType = enum_MESSAGETYPE.MT_OUTPUTSTRING;
     }
+
+    internal IVariable EvaluateExpression(int frameId, string expression)
+    {
+        if (!frames.TryGetValue(frameId, out var frame))
+            return VariableInfo.Empty;
+
+        var ret = frame.m_pFrame.GetExpressionContext(out var expressionContext);
+        if (ret != 0 || expressionContext == null)
+            return VariableInfo.Empty;
+
+        ret = expressionContext.ParseText(expression, enum_PARSEFLAGS.PARSE_EXPRESSION, 10, out var ppExpr, out var err, out var pichError);
+        if (ret != 0 || ppExpr == null)
+            return new VariableInfo("", err, 0);
+
+        ret = ppExpr.EvaluateSync(enum_EVALFLAGS.EVAL_DESIGN_TIME_EXPR_EVAL, 1000, null, out var result);
+        if (ret != 0)
+            return new VariableInfo("", "eval error...", 0);
+
+        var propInfo = new DEBUG_PROPERTY_INFO[1];
+        ret = result.GetPropertyInfo(enum_DEBUGPROP_INFO_FLAGS.DEBUGPROP_INFO_STANDARD | enum_DEBUGPROP_INFO_FLAGS.DEBUGPROP_INFO_PROP, 10u, 1000, null, 0, propInfo);
+        if (ret != 0)
+            return new VariableInfo("", "timeout...", 0);
+
+        var info = propInfo[0];
+        var name = info.bstrName;
+        var value = info.bstrValue;
+        var type = info.bstrType;
+        var propertyId = 0;
+        if (info.pProperty != null && !IsWellKnownValueLikeType(type))
+        {
+            propertyId = Interlocked.Increment(ref propertyIdCounter);
+            properties[propertyId] = info.pProperty;
+        }
+
+        return new VariableInfo(name, value, propertyId);
+    }
 }
 
 file record ThreadInfo(int Id, string Name) : IThread
@@ -538,6 +574,7 @@ file record FrameInfo(int Id, string Name, string SourcePath, int Line, int Colu
 
 file record VariableInfo(string Name, string Value, int VariablesReference) : IVariable
 {
+    public static VariableInfo Empty { get; } = new("", "", 0);
 }
 
 enum BreakpointState
