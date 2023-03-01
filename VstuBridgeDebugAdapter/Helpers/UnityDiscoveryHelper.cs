@@ -10,10 +10,15 @@ static class UnityDiscoveryHelper
     {
         if (projectPath is not null)
         {
+            if (!Directory.Exists(projectPath))
+            {
+                throw new FileNotFoundException($"'{projectPath}' directory does not exist.");
+            }
+
             var editorInstanceJsonPath = Path.Combine(projectPath, "Library", "EditorInstance.json");
             if (!File.Exists(editorInstanceJsonPath))
             {
-                throw new FileNotFoundException(editorInstanceJsonPath);
+                throw new FileNotFoundException($"Unity Editor not running at '{projectPath}'");
             }
 
             var editorInstance = JsonNode.Parse(File.ReadAllText(editorInstanceJsonPath))

@@ -5,7 +5,7 @@ namespace VstuBridgeDebugAdaptor.Core;
 
 sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
 {
-    DebugDocumentPosition position;
+    readonly DebugDocumentPosition position;
 
     public DebugBreakpointRequest(DebugDocumentPosition position)
     {

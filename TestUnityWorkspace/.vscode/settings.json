@@ -52,5 +52,6 @@
         "temp/":true,
         "Temp/":true
     },
-    "vstu-debugger.vstuPath": "C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
+    // "vstu-debugger.vstuPath": "C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
+    "vstu-debugger.vstuPath": ""
 }

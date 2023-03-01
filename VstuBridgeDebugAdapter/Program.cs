@@ -5,9 +5,13 @@ using System.Net.Sockets;
 using System.Net;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json.Nodes;
+
+_ = typeof(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree);
 
 var port = 0;
 var logFile = "";
+var version = false;
 
 var argQueue = new Queue<string>(args);
 while (argQueue.Count > 0)
@@ -18,8 +22,11 @@ while (argQueue.Count > 0)
         case "--port":
             port = int.Parse(argQueue.Dequeue(), CultureInfo.InvariantCulture);
             break;
-        case "--log-file":
+        case "--log":
             logFile = argQueue.Dequeue();
+            break;
+        case "--version":
+            version = true;
             break;
         default:
             throw new ArgumentException($"Unknown argument: {arg}");
@@ -33,7 +40,7 @@ if (logFile == "" && port == 0)
 }
 
 var logWriter = Console.Error;
-if (logFile != "")
+if (logFile is not "" and not "-")
 {
     var fs = new FileStream(logFile, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
     logWriter = new StreamWriter(fs, Encoding.UTF8, 1024, true);
@@ -50,6 +57,13 @@ logWriter.WriteLine($"ProcessId: {Environment.ProcessId}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine).Assembly.FullName}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Messaging.UnityProcess).Assembly.FullName}");
 logWriter.WriteLine($"Using: {typeof(Mono.Debugger.Soft.VirtualMachine).Assembly.FullName}");
+
+if (version)
+{
+    var packageVersion = JsonNode.Parse(File.ReadAllText("package.json"))?["version"]?.ToString();
+    Console.WriteLine(packageVersion ?? "0.0.0");
+    Environment.Exit(0);
+}
 
 if (port == 0)
 {
