@@ -24,5 +24,13 @@ public class NewBehaviourScript : MonoBehaviour
         Debug.Log("Hello");
         Debug.Log($"tid={tid}");
         Debug.Log($"unmanagedTid={unmanagedTid}");
+
+        var sum = 0;
+        for (var i = 0; i < 10; ++i)
+        {
+            sum += i;
+        }
+
+        Debug.Log($"sum={sum}");
     }
 }

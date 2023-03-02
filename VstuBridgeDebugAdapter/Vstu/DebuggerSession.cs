@@ -474,7 +474,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         return (int)(0x7fff_ffff & tid);
     }
 
-    internal void AddBreakpoint(string path, int line, int column)
+    internal void AddBreakpoint(string path, int line, int column, string condition, int hitCount)
     {
         if (breakpoints.TryGetValue((path, line, column), out var info))
         {
@@ -483,7 +483,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
 
         /// <see cref="SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine.CreatePendingBreakpoint" />
         var ret = engine.CreatePendingBreakpoint(
-            new DebugBreakpointRequest(new DebugDocumentPosition(path, line, column)),
+            new DebugBreakpointRequest(new DebugDocumentPosition(path, line, column), condition, hitCount),
             out var pendingBreakpoint);
         if (ret != 0)
         {

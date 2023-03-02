@@ -1,4 +1,5 @@
 using System.Dynamic;
+using System.Globalization;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
 using VstuBridgeDebugAdaptor.Helpers;
@@ -11,7 +12,7 @@ namespace VstuBridgeDebugAdaptor.Adapter;
 sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 {
     readonly TextWriter logger;
-    readonly Dictionary<string, List<Breakpoint>> breakpointsBySource = new();
+    readonly Dictionary<string, List<BreakpointState>> breakpointsBySource = new();
     DebuggerSession session = null!;
     int breakpointIdCounter;
 
@@ -59,14 +60,13 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             SupportsConfigurationDoneRequest = false,
             SupportsFunctionBreakpoints = false,
 
-            SupportsConditionalBreakpoints = false,
-            SupportsEvaluateForHovers = true,
+            SupportsConditionalBreakpoints = true,
+            SupportsHitConditionalBreakpoints = true,
 
             SupportsExceptionConditions = false,
             SupportsExceptionOptions = false,
 
-            SupportsHitConditionalBreakpoints = false,
-
+            SupportsEvaluateForHovers = true,
             SupportsSetVariable = false,
             SupportsTerminateRequest = true,
 
@@ -109,29 +109,26 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         var source = arguments.Source;
         if (!breakpointsBySource.TryGetValue(source.Path, out var breakpoints))
         {
-            breakpoints = new List<Breakpoint>();
-            breakpointsBySource[source.Path] = breakpoints;
+            breakpointsBySource[source.Path] = breakpoints = new();
         }
 
         for (var i = 0; i < breakpoints.Count; ++i)
         {
-            var bp = breakpoints[i];
-            var line = bp.Line ?? 0;
-            var column = bp.Column ?? 0;
-            var found = arguments.Breakpoints.FirstOrDefault(b => b.Line == line && (b.Column ?? 0) == column);
-            if (found == null)
+            var state = breakpoints[i];
+            var found = arguments.Breakpoints.FirstOrDefault(b => b.Line == state.Line && (b.Column ?? 0) == state.Column);
+            if (found == null || state.IsConditionChanged(found))
             {
-                SendOutput($"Request Delete Breakpoint: {source.Path}:{line}:{column}");
-                session.DeleteBreakpoint(source.Path, line, column);
+                SendOutput($"Request Delete Breakpoint: {source.Path}:{state.Line}:{state.Column}");
+                session.DeleteBreakpoint(source.Path, state.Line, state.Column);
                 breakpoints.RemoveAt(i);
                 --i;
             }
         }
 
-        foreach (var bp in arguments.Breakpoints)
+        foreach (var breakpoint in arguments.Breakpoints)
         {
-            var column = bp.Column ?? 0;
-            var found = breakpoints.FirstOrDefault(x => x.Line == bp.Line && x.Column == column);
+            var column = breakpoint.Column ?? 0;
+            var found = breakpoints.FirstOrDefault(x => x.Line == breakpoint.Line && x.Column == column);
             if (found != null)
             {
                 continue;
@@ -139,21 +136,29 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
             // note. breakpoints.Add() -> session.SetBreakpoint()
             var id = Interlocked.Increment(ref breakpointIdCounter);
-            breakpoints.Add(new Breakpoint(verified: false)
+            var hitCount = string.IsNullOrEmpty(breakpoint.HitCondition)
+                            ? 0
+                            : int.Parse(breakpoint.HitCondition, NumberStyles.Integer, CultureInfo.InvariantCulture);
+            if (hitCount < 0)
+                throw new NotSupportedException($"hitCount:{hitCount} < 0");
+
+            breakpoints.Add(new()
             {
                 Id = id,
-                Line = bp.Line,
+                Line = breakpoint.Line,
                 Column = column,
+                Condition = breakpoint.Condition,
+                HitCount = hitCount,
             });
 
-            SendOutput($"Request Add Breakpoint: {source.Path}:{bp.Line}:{column}");
-            session.AddBreakpoint(source.Path, bp.Line, column);
+            SendOutput($"Request Add Breakpoint: {source.Path}:{breakpoint.Line}:{column}");
+            session.AddBreakpoint(source.Path, breakpoint.Line, column, breakpoint.Condition, hitCount);
         }
 
-        breakpoints.Sort((x, y) => (x.Line!.Value, x.Column!.Value).CompareTo((y.Line!.Value, y.Column!.Value)));
+        breakpoints.Sort((x, y) => (x.Line, x.Column).CompareTo((y.Line, y.Column)));
         return new()
         {
-            Breakpoints = breakpoints,
+            Breakpoints = breakpoints.Select(x => x.ToResponse()).ToList(),
         };
     }
 
@@ -351,7 +356,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         }
 
         bp.Verified = verified;
-        Protocol.SendEvent(new BreakpointEvent(BreakpointEvent.ReasonValue.Changed, bp));
+        Protocol.SendEvent(new BreakpointEvent(BreakpointEvent.ReasonValue.Changed, bp.ToResponse()));
     }
 
     public void OnStoppedByPause(int threadId)
@@ -373,7 +378,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
     public void OnStoppedByBreakpoint(int threadId, string file, int line, int column)
     {
         var bp = FindBreakpoint(file, line, column);
-        var ids = bp == null ? new List<int>() : new List<int>() { bp.Id!.Value };
+        var ids = bp == null ? new List<int>() : new List<int>() { bp.Id };
 
         Protocol.SendEvent(new StoppedEvent(StoppedEvent.ReasonValue.Breakpoint)
         {
@@ -395,7 +400,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         Protocol.Stop();
     }
 
-    Breakpoint? FindBreakpoint(string file, int line, int column)
+    BreakpointState? FindBreakpoint(string file, int line, int column)
     {
         if (breakpointsBySource.TryGetValue(file, out var breakpoints))
         {
