@@ -1,10 +1,4 @@
-using System.Globalization;
-using System.Net;
-using System.Text.Json.Nodes;
-using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
-using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
-
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Interfaces;
 
 interface IListener
 {

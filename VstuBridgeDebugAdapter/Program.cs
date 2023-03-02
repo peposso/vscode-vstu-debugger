@@ -1,11 +1,12 @@
 ﻿using System.Text;
-using VstuBridgeDebugAdaptor.Core;
+using VstuBridgeDebugAdaptor.Vstu;
 using System.Globalization;
 using System.Net.Sockets;
 using System.Net;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json.Nodes;
+using VstuBridgeDebugAdaptor.Adapter;
 
 _ = typeof(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree);
 
@@ -65,7 +66,7 @@ if (version)
     Environment.Exit(0);
 }
 
-if (port == 0)
+if (port == 0)  // stdin/stdout
 {
     var adapter = new VstuDebugAdapter(Console.OpenStandardInput(), Console.OpenStandardOutput(), logWriter);
     adapters.TryAdd(0, adapter);

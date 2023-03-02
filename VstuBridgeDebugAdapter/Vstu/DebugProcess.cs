@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.Debugger.Interop;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Vstu;
 
 sealed class DebugProcess : IDebugProcess2
 {

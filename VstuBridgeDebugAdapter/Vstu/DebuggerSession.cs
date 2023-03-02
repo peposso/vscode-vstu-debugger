@@ -4,8 +4,9 @@ using Microsoft.VisualStudio.Debugger.Interop;
 using SyntaxTree.VisualStudio.Unity.Debugger;
 using SyntaxTree.VisualStudio.Unity.Projects;
 using VstuBridgeDebugAdapter.Helpers;
+using VstuBridgeDebugAdaptor.Interfaces;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Vstu;
 
 sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEngineHost, IProjectFileMapper
 {
@@ -335,7 +336,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         return null!;
     }
 
-    internal IEnumerable<IThread> GetThreads()
+    internal IEnumerable<ThreadDto> GetThreads()
     {
         program.EnumThreads(out var ppEnum);
         threads.Clear();
@@ -345,20 +346,20 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
             threads[tid] = debugThread;
         }
 
-        var result = new List<IThread>();
+        var result = new List<ThreadDto>();
         foreach (var (id, thread) in threads)
         {
             thread.GetName(out var name);
-            result.Add(new ThreadInfo(id, name));
+            result.Add(new(id, name));
         }
         return result;
     }
 
-    internal IEnumerable<IStackFrame> GetStackFrames(int threadId)
+    internal IEnumerable<FrameDto> GetStackFrames(int threadId)
     {
         if (!threads.TryGetValue(threadId, out var thread))
         {
-            return Enumerable.Empty<IStackFrame>();
+            return Enumerable.Empty<FrameDto>();
         }
 
         var flags = enum_FRAMEINFO_FLAGS.FIF_FUNCNAME
@@ -370,10 +371,10 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         if (ret != 0)
         {
             // maybe dead thread
-            return Enumerable.Empty<IStackFrame>();
+            return Enumerable.Empty<FrameDto>();
         }
 
-        var result = new List<IStackFrame>();
+        var result = new List<FrameDto>();
         var begin = new TEXT_POSITION[1];
         var end = new TEXT_POSITION[1];
         foreach (var frameInfo in VsDebugHelper.ToArray(ppEnum))
@@ -386,7 +387,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
             frame.GetDocumentContext(out var docContext);
             if (docContext == null)
             {
-                result.Add(new FrameInfo(frameId, name, "", 0, 0));
+                result.Add(new(frameId, name, "", 0, 0));
                 continue;
             }
 
@@ -394,7 +395,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
             docContext.GetStatementRange(begin, end);
             var line = (int)(begin[0].dwLine + 1);
             var column = (int)begin[0].dwColumn;
-            result.Add(new FrameInfo(frameId, name, sourcePath, line, column));
+            result.Add(new(frameId, name, sourcePath, line, column));
         }
 
         return result;
@@ -418,15 +419,15 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         return propertyId;  // == variablesReference
     }
 
-    internal IEnumerable<IVariable> GetVariables(int variablesReference)
+    internal IEnumerable<VariableDto> GetVariables(int variablesReference)
     {
         // variablesReference is propertyId
         if (!properties.TryGetValue(variablesReference, out var property))
         {
-            return Enumerable.Empty<IVariable>();
+            return Enumerable.Empty<VariableDto>();
         }
 
-        var variables = new List<IVariable>();
+        var variables = new List<VariableDto>();
         foreach (var info in VsDebugHelper.GetChildren(property))
         {
             var name = info.bstrName;
@@ -440,7 +441,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
                 properties[propertyId] = info.pProperty;
             }
 
-            variables.Add(new VariableInfo(name, value, propertyId));
+            variables.Add(new(name, value, propertyId));
         }
 
         return variables;
@@ -473,7 +474,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         return (int)(0x7fff_ffff & tid);
     }
 
-    internal void SetBreakpoint(string path, int line, int column)
+    internal void AddBreakpoint(string path, int line, int column)
     {
         if (breakpoints.TryGetValue((path, line, column), out var info))
         {
@@ -527,27 +528,27 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         messageType = enum_MESSAGETYPE.MT_OUTPUTSTRING;
     }
 
-    internal IVariable EvaluateExpression(int frameId, string expression)
+    internal VariableDto EvaluateExpression(int frameId, string expression)
     {
         if (!frames.TryGetValue(frameId, out var frame))
-            return VariableInfo.Empty;
+            return VariableDto.Empty;
 
         var ret = frame.m_pFrame.GetExpressionContext(out var expressionContext);
         if (ret != 0 || expressionContext == null)
-            return VariableInfo.Empty;
+            return VariableDto.Empty;
 
         ret = expressionContext.ParseText(expression, enum_PARSEFLAGS.PARSE_EXPRESSION, 10, out var ppExpr, out var err, out var pichError);
         if (ret != 0 || ppExpr == null)
-            return new VariableInfo("", err, 0);
+            return new("", err, 0);
 
         ret = ppExpr.EvaluateSync(enum_EVALFLAGS.EVAL_DESIGN_TIME_EXPR_EVAL, 1000, null, out var result);
         if (ret != 0)
-            return new VariableInfo("", "eval error...", 0);
+            return new("", "eval error...", 0);
 
         var propInfo = new DEBUG_PROPERTY_INFO[1];
         ret = result.GetPropertyInfo(enum_DEBUGPROP_INFO_FLAGS.DEBUGPROP_INFO_STANDARD | enum_DEBUGPROP_INFO_FLAGS.DEBUGPROP_INFO_PROP, 10u, 1000, null, 0, propInfo);
         if (ret != 0)
-            return new VariableInfo("", "timeout...", 0);
+            return new("", "timeout...", 0);
 
         var info = propInfo[0];
         var name = info.bstrName;
@@ -560,21 +561,8 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
             properties[propertyId] = info.pProperty;
         }
 
-        return new VariableInfo(name, value, propertyId);
+        return new(name, value, propertyId);
     }
-}
-
-file record ThreadInfo(int Id, string Name) : IThread
-{
-}
-
-file record FrameInfo(int Id, string Name, string SourcePath, int Line, int Column) : IStackFrame
-{
-}
-
-file record VariableInfo(string Name, string Value, int VariablesReference) : IVariable
-{
-    public static VariableInfo Empty { get; } = new("", "", 0);
 }
 
 enum BreakpointState

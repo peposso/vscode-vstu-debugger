@@ -1,9 +1,12 @@
+using System.Dynamic;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
 using VstuBridgeDebugAdaptor.Helpers;
+using VstuBridgeDebugAdaptor.Interfaces;
+using VstuBridgeDebugAdaptor.Vstu;
 using Thread = Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages.Thread;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Adapter;
 
 sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 {
@@ -144,10 +147,10 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             });
 
             SendOutput($"Request Add Breakpoint: {source.Path}:{bp.Line}:{column}");
-            session.SetBreakpoint(source.Path, bp.Line, column);
+            session.AddBreakpoint(source.Path, bp.Line, column);
         }
 
-        breakpoints.Sort((x, y) => x.Line!.Value.CompareTo(y.Line!.Value));
+        breakpoints.Sort((x, y) => (x.Line!.Value, x.Column!.Value).CompareTo((y.Line!.Value, y.Column!.Value)));
         return new()
         {
             Breakpoints = breakpoints,

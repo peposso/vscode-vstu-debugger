@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Debugger.Interop;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Vstu;
 
 sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
 {

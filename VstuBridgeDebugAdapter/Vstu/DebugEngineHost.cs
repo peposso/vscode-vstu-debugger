@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.Debugger.Interop;
 using SyntaxTree.VisualStudio.Unity.Debugger;
 using SyntaxTree.VisualStudio.Unity.Projects;
 
-namespace VstuBridgeDebugAdaptor.Core;
+namespace VstuBridgeDebugAdaptor.Vstu;
 
 sealed class DebugEngineHost : IDebugEngineHost
 {
