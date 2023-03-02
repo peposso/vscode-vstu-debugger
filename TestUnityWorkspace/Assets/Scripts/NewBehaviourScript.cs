@@ -8,11 +8,6 @@ public class NewBehaviourScript : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        var unmanagedTid = AppDomain.GetCurrentThreadId();
-        var tid = System.Threading.Thread.CurrentThread.ManagedThreadId;
-        Debug.Log("Hello");
-        Debug.Log($"tid={tid}");
-        Debug.Log($"unmanagedTid={unmanagedTid + 100}");
         Test();
     }
 

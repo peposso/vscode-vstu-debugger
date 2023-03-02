@@ -8,7 +8,8 @@
             "name": "Unity Editor (VSTU)",
             "type": "vstu",
             "request": "attach",
-            "projectPath": "${workspaceFolder}"
+            "projectPath": "${workspaceFolder}",
+            // "adapterPort": 4711
         },
         {
             "name": "Unity Editor",

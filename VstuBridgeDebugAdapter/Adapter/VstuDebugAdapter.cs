@@ -157,6 +157,14 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         };
     }
 
+    protected override SetExceptionBreakpointsResponse HandleSetExceptionBreakpointsRequest(SetExceptionBreakpointsArguments arguments)
+    {
+        if (arguments.Filters is not [])
+            throw new NotSupportedException();
+
+        return new();
+    }
+
     protected override PauseResponse HandlePauseRequest(PauseArguments arguments)
     {
         session.Pause();
