@@ -9,7 +9,7 @@ sealed class BreakpointState
     public required int Line { get; init; }
     public required int Column { get; init; }
     public bool Verified { get; set; }
-    public string Condition { get; set; }
+    public string Condition { get; set; } = "";
     public int HitCount { get; set; }
 
     internal bool IsConditionChanged(SourceBreakpoint source)

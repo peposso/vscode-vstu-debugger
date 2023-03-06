@@ -5,15 +5,16 @@ using SyntaxTree.VisualStudio.Unity.Debugger;
 using SyntaxTree.VisualStudio.Unity.Projects;
 using VstuBridgeDebugAdapter.Helpers;
 using VstuBridgeDebugAdaptor.Interfaces;
+#pragma warning disable CA1822
 
 namespace VstuBridgeDebugAdaptor.Vstu;
 
-sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEngineHost, IProjectFileMapper
+sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProjectFileMapper
 {
     [ThreadStatic]
     static DebuggerSession? threadStaticInstance;
 
-    internal static DebuggerSession? Instance => threadStaticInstance;
+    public static DebuggerSession? Instance => threadStaticInstance;
 
     public IProjectFileMapper FileMapper => this;
 
@@ -61,7 +62,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
     {
         if (riidEvent == typeof(IDebugEngineCreateEvent2).GUID)
         {
-            listener.OnOutput($"Event: IDebugEngineCreateEvent2");
+            listener.OnOutput($"EngineCreated");
             return 0;
         }
 
@@ -73,13 +74,13 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
 
         if (riidEvent == typeof(IDebugProgramCreateEvent2).GUID)
         {
-            listener.OnOutput($"Event: IDebugProgramCreateEvent2");
+            listener.OnOutput($"ProgramCreated");
             return 0;
         }
 
         if (riidEvent == typeof(IDebugProgramDestroyEvent2).GUID)
         {
-            listener.OnOutput($"Event: IDebugProgramDestroyEvent2");
+            listener.OnOutput($"ProgramDestroyed");
             return 0;
         }
 
@@ -180,7 +181,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
 
         if (riidEvent == typeof(IDebugStepCompleteEvent2).GUID)
         {
-            listener.OnOutput("Event: IDebugStepCompleteEvent2");
+            listener.OnOutput("StepCompleted");
             var tid = GetThreadId(pThread);
             listener.OnStoppedByStep(tid);
             return 0;
@@ -188,32 +189,15 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
 
         if (riidEvent == typeof(IDebugExceptionEvent2).GUID)
         {
-            // IDebugExceptionEvent2 obj = (IDebugExceptionEvent2)pEvent;
-            // EXCEPTION_INFO[] array2 = new EXCEPTION_INFO[1];
-            // obj.GetException(array2);
-            // if (!_exceptionManager.TryGetBreakEventInfo(array2[0], out BreakEventInfo eventInfo4))
-            // {
-            //     return -2147467259;
-            // }
-            // TargetEventArgs val3 = new TargetEventArgs((TargetEventType)6);
-            // val3.set_BreakEvent(eventInfo4.get_BreakEvent());
-            // val3.set_Process(ProcessInfo);
-            // val3.set_Thread(GetThreadInfo(pThread));
-            // val3.set_IsStopEvent(true);
-            // TargetEventArgs val4 = (TargetEventArgs)(object)val3;
-            // ((DebuggerSession)this).OnTargetEvent(val4);
+            throw new NotSupportedException();
         }
-        else if (riidEvent == typeof(IDebugBreakEvent2).GUID)
+
+        if (riidEvent == typeof(IDebugOutputStringEvent2).GUID)
         {
-            // TargetEventArgs val7 = new TargetEventArgs((TargetEventType)1);
-            // val7.set_Thread(GetThreadInfo(pThread));
-            // val7.set_Process(ProcessInfo);
-            // val7.set_IsStopEvent(true);
-            // TargetEventArgs val8 = (TargetEventArgs)(object)val7;
-            // ((DebuggerSession)this).OnTargetEvent(val8);
-        }
-        else if (riidEvent == typeof(IDebugOutputStringEvent2).GUID)
-        {
+            var ev = (IDebugOutputStringEvent2)pEvent;
+            ev.GetString(out var pbstrString);
+            listener.OnOutput(pbstrString);
+            return 0;
         }
 
         listener.OnOutput($"unknown Event: {riidEvent} ({pEvent.GetType().Name})");
@@ -244,7 +228,8 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         var ret = engineLaunch.LaunchSuspended("", this.port, "", "", "", "", options, default, 0, 00, 0, this, out process);
         if (ret != 0)
         {
-            throw new InvalidOperationException($"Failed to LaunchSuspended: {ret}");
+            var asms = string.Join("|", AppDomain.CurrentDomain.GetAssemblies().Select(x => x.FullName));
+            throw new InvalidOperationException($"Failed to LaunchSuspended: {ret} options={options} asms={asms}");
         }
 
         ret = engineLaunch.ResumeProcess(process);
@@ -522,7 +507,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IDebugEn
         throw new NotImplementedException();
     }
 
-    public void OnBreakpointConditionError(BreakpointConditionError error, out string message, out enum_MESSAGETYPE messageType)
+    public void OnBreakpointConditionError(object error, out string message, out enum_MESSAGETYPE messageType)
     {
         message = $"OnBreakpointConditionError: {error}";
         messageType = enum_MESSAGETYPE.MT_OUTPUTSTRING;
