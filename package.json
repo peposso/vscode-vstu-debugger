@@ -66,8 +66,10 @@
         },
         "initialConfigurations": [
           {
+            "name": "Unity Editor (VSTU)",
             "type": "vstu",
-            "request": "attach"
+            "request": "attach",
+            "projectPath": "${workspaceFolder}"
           }
         ],
         "configurationSnippets": [
