@@ -228,8 +228,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         var ret = engineLaunch.LaunchSuspended("", this.port, "", "", "", "", options, default, 0, 00, 0, this, out process);
         if (ret != 0)
         {
-            var asms = string.Join("|", AppDomain.CurrentDomain.GetAssemblies().Select(x => x.FullName));
-            throw new InvalidOperationException($"Failed to LaunchSuspended: {ret} options={options} asms={asms}");
+            throw new InvalidOperationException($"Failed to LaunchSuspended: {ret}");
         }
 
         ret = engineLaunch.ResumeProcess(process);
