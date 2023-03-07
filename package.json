@@ -32,6 +32,7 @@
     "onDebugResolve:vstu-unity",
     "onDebugDynamicConfigurations:vstu-unity"
   ],
+  "icon": "images/icon.png",
   "main": "./src/extension.js",
   "workspaceTrust": {
     "request": "never"
