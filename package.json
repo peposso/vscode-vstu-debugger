@@ -8,15 +8,29 @@
     "name": "peposso"
   },
   "license": "MIT",
-  "engines": {
-    "vscode": "^1.75.0"
-  },
   "categories": [
     "Debuggers"
   ],
+  "keywords": [
+    "unity",
+    "unity3d",
+    "debugger",
+    "debug"
+  ],
+  "homepage": "https://github.com/peposso/vscode-vstu-debugger",
+  "bugs": {
+    "url": "https://github.com/peposso/vscode-vstu-debugger/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peposso/vscode-vstu-debugger.git"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
   "activationEvents": [
-    "onDebugResolve:vstu",
-    "onDebugDynamicConfigurations:vstu"
+    "onDebugResolve:vstu-unity",
+    "onDebugDynamicConfigurations:vstu-unity"
   ],
   "main": "./src/extension.js",
   "workspaceTrust": {
@@ -42,7 +56,7 @@
     ],
     "debuggers": [
       {
-        "type": "vstu",
+        "type": "vstu-unity",
         "languages": [
           "csharp"
         ],
@@ -67,7 +81,7 @@
         "initialConfigurations": [
           {
             "name": "Unity Editor (VSTU)",
-            "type": "vstu",
+            "type": "vstu-unity",
             "request": "attach",
             "projectPath": "${workspaceFolder}"
           }
@@ -78,7 +92,7 @@
             "description": "Unity Debug using VSTU",
             "body": {
               "name": "Unity Editor (VSTU)",
-              "type": "vstu",
+              "type": "vstu-unity",
               "request": "attach",
               "projectPath": "^\"\\${workspaceFolder}\""
             }

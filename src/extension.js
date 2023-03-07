@@ -98,7 +98,7 @@ class DebugConfigurationProvider {
             const editor = vscode.window.activeTextEditor;
             if (editor && editor.document.languageId === 'csharp') {
                 config.name = 'Unity Editor (VSTU)';
-                config.type = 'vstu';
+                config.type = 'vstu-unity';
                 config.request = 'attach';
                 config.projectPath = '${workspaceFolder}';
             }
@@ -232,9 +232,9 @@ function activate(context) {
 
     // https://github.com/microsoft/vscode-mock-debug/blob/63e33ea07d9769ae9605212a13e96796333a61fd/src/activateMockDebug.ts#L155
     const provider = new DebugConfigurationProvider();
-    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('vstu', provider));
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('vstu-unity', provider));
 
-    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('vstu', {
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('vstu-unity', {
         /**
          * 
          * @param {vscode.WorkspaceFolder} _folder 
@@ -243,19 +243,19 @@ function activate(context) {
         provideDebugConfigurations(_folder) {
             return [
                 {
-                    name: "Attach Unity by VSTU",
+                    name: "Unity Editor (VSTU)",
+                    type: "vstu-unity",
                     request: "attach",
-                    type: "vstu",
-                    adapterPort: 0,
+                    projectPath: "${workspaceFolder}",
                 },
             ];
         }
     }, vscode.DebugConfigurationProviderTriggerKind.Dynamic));
 
     const factory = new DebugAdapterFactory(context);
-    context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('vstu', factory));
+    context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('vstu-unity', factory));
 
-    vscode.debug.registerDebugAdapterTrackerFactory('vstu', {
+    context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('vstu-unity', {
         /**
          * @param {vscode.DebugSession} session
         */
@@ -279,13 +279,13 @@ function activate(context) {
                 onExit(code, signal) {
                     output(`onExit: code:${code}, signal:${signal}`)
                     const elapsed = Date.now() - startAt;
-                    if (code != 0 && elapsed < 10000) {
+                    if (code != 0 && elapsed < 60000) {
                         checkRuntime(context);
                     }
                 },
             };
         }
-    });
+    }));
 }
 
 // This method is called when your extension is deactivated

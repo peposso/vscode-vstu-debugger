@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Unity Editor (VSTU)",
-            "type": "vstu",
+            "type": "vstu-unity",
             "request": "attach",
             "projectPath": "${workspaceFolder}",
             // "waitDebuggerAttached": true,
