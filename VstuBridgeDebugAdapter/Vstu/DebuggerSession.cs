@@ -129,6 +129,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         {
             var ev = (IDebugBreakpointBoundEvent2)pEvent;
             ev.GetPendingBreakpoint(out IDebugPendingBreakpoint2 ppPendingBP);
+            ppPendingBP.Enable(1);
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
                 info.State = BreakpointState.Verified;
@@ -485,10 +486,11 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         breakpoints[(path, line, column)] = info;
         pendingBreakpoints[pendingBreakpoint] = info;
 
-        /// <see cref="SyntaxTree.VisualStudio.Unity.Debugger.UnityPendingLocationBreakpoint.Bind" />
-        /// <see cref="SyntaxTree.VisualStudio.Unity.Debugger.UnityPendingBreakpoint.Enable" />
-        pendingBreakpoint.Bind();
-        pendingBreakpoint.Enable(1);
+        // bind is automatically called
+        if (pendingBreakpoint.Bind() == 0)
+        {
+            pendingBreakpoint.Enable(1);
+        }
     }
 
     internal void DeleteBreakpoint(string path, int line, int column)
