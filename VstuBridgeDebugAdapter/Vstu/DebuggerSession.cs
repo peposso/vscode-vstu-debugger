@@ -486,7 +486,6 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         breakpoints[(path, line, column)] = info;
         pendingBreakpoints[pendingBreakpoint] = info;
 
-        // bind is automatically called
         if (pendingBreakpoint.Bind() == 0)
         {
             pendingBreakpoint.Enable(1);
