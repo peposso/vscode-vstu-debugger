@@ -9,6 +9,7 @@
             "type": "vstu",
             "request": "attach",
             "projectPath": "${workspaceFolder}",
+            // "waitDebuggerAttached": true,
             // "adapterPort": 4711
         },
         {

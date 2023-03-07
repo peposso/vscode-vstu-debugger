@@ -2,6 +2,7 @@ using System.Dynamic;
 using System.Globalization;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
+using Newtonsoft.Json.Linq;
 using VstuBridgeDebugAdaptor.Helpers;
 using VstuBridgeDebugAdaptor.Interfaces;
 using VstuBridgeDebugAdaptor.Vstu;
@@ -76,19 +77,24 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     protected override AttachResponse HandleAttachRequest(AttachArguments arguments)
     {
-        arguments.ConfigurationProperties.TryGetValue("projectPath", out var projectPathToken);
-        var projectPath = projectPathToken?.ToString();
+        AttachCore(arguments.ConfigurationProperties);
+        return new();
+    }
 
-        var (address, port, processId) = UnityDiscoveryHelper.GetConnectionInfo(projectPath);
-        SendOutput($"Attaching to process {processId} ({address}:{port})...");
-
-        session = new(this);
-        session.Attach(address, port);
-
+    protected override LaunchResponse HandleLaunchRequest(LaunchArguments arguments)
+    {
+        AttachCore(arguments.ConfigurationProperties);
         return new();
     }
 
     protected override DisconnectResponse HandleDisconnectRequest(DisconnectArguments arguments)
+    {
+        session?.Terminate();
+        session = null!;
+        return new();
+    }
+
+    protected override TerminateResponse HandleTerminateRequest(TerminateArguments arguments)
     {
         session?.Terminate();
         session = null!;
@@ -398,6 +404,29 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
         logger.Flush();
         Protocol.Stop();
+    }
+
+    void AttachCore(Dictionary<string, JToken> conf)
+    {
+        SendOutput($"Debug Adapter ProcessId: {Environment.ProcessId}");
+        if (conf.TryGetValue("waitDebuggerAttached", out var wait) && (bool)wait)
+        {
+            while (!System.Diagnostics.Debugger.IsAttached)
+            {
+                System.Threading.Thread.Sleep(100);
+            }
+
+            System.Diagnostics.Debugger.Break();
+        }
+
+        conf.TryGetValue("projectPath", out var projectPathToken);
+        var projectPath = projectPathToken?.ToString();
+
+        var (address, port, processId) = UnityDiscoveryHelper.GetConnectionInfo(projectPath);
+        SendOutput($"Attaching to process {processId} ({address}:{port})...");
+
+        session = new(this);
+        session.Attach(address, port);
     }
 
     BreakpointState? FindBreakpoint(string file, int line, int column)

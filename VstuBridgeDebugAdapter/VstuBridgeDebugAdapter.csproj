@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>6-recommended</AnalysisLevel>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>obj/gen</CompilerGeneratedFilesOutputPath>
 
     <_VstuPath>$(CONF_VSTU_PATH)</_VstuPath>
     <_VstuPath Condition="'$(_VstuPath)' == '' AND $([MSBuild]::IsOSPlatform('Windows')) AND Exists('C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity')">C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity</_VstuPath>
@@ -31,6 +33,7 @@
     <Reference Include="$(_VstuPath)/SyntaxTree.VisualStudio.Unity.Common.dll" />
     <Reference Include="$(_VstuPath)/SyntaxTree.VisualStudio.Unity.Messaging.dll" />
     <Reference Include="$(_VstuPath)/SyntaxTree.Mono.Debugger.Soft.dll" />
+    <Analyzer Include="../ImplementGenerator/build/ImplementGenerator.dll" />
   </ItemGroup>
 
 </Project>

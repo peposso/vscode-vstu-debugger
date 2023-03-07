@@ -7,3 +7,12 @@ vsc-extension-quickstart.md
 **/jsconfig.json
 **/*.map
 **/.eslintrc.json
+cspell.json
+
+ImplementGenerator/bin/**
+ImplementGenerator/obj/**
+ImplementGenerator.Tests/**
+node_modules/**
+TestUnityWorkspace/**
+VstuBridgeDebugAdapter/bin/**
+VstuBridgeDebugAdapter/obj/**

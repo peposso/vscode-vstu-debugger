@@ -69,7 +69,9 @@ class DebugAdapterFactory {
 
         if (!executable) {
             const { command, args, options } = createAdaptorCommand(this._context);
-            args.push("-c", "Release")
+            if (!session.configuration.waitDebuggerAttached) {
+                args.push("-c", "Release")
+            }
             executable = new vscode.DebugAdapterExecutable(command, args, options);
         }
 
