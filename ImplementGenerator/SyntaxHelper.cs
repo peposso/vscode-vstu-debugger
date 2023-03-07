@@ -50,16 +50,35 @@ static class SyntaxHelper
         return null;
     }
 
-    internal static bool HasNamedAttribute(SyntaxList<AttributeListSyntax> attributeLists, string v)
+    internal static bool HasNamedAttribute(SyntaxList<AttributeListSyntax> attributeLists, string name)
     {
-        foreach (var attributeList in attributeLists)
+        if (name.EndsWith("Attribute", StringComparison.Ordinal))
+            return HasNamedAttributeCore(attributeLists, name)
+                || HasNamedAttributeCore(attributeLists, name.Substring(0, name.Length - 9));
+
+        return HasNamedAttributeCore(attributeLists, name)
+            || HasNamedAttributeCore(attributeLists, name + "Attribute");
+
+        static bool HasNamedAttributeCore(SyntaxList<AttributeListSyntax> attributeLists, string v)
         {
-            foreach (var attribute in attributeList.Attributes)
+            foreach (var attributeList in attributeLists)
             {
-                if (attribute.Name is IdentifierNameSyntax { Identifier: { ValueText: var name } } && name == v)
-                    return true;
+                foreach (var attribute in attributeList.Attributes)
+                {
+                    if (attribute.Name is IdentifierNameSyntax { Identifier: { ValueText: var name } }
+                        && name == v)
+                        return true;
+                }
             }
+            return false;
         }
-        return false;
+    }
+
+    internal static TypeSyntax? GetBaseType(SyntaxNode node)
+    {
+        if (node is not TypeDeclarationSyntax decl)
+            return null;
+
+        return decl.BaseList?.Types.FirstOrDefault()?.Type;
     }
 }

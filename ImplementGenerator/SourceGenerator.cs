@@ -15,36 +15,31 @@ public class SourceGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        File.WriteAllText("C:\\temp\\_killnethost.bat", $"taskkill /f /pid {Process.GetCurrentProcess().Id}");
-
-        // Log("Initialize");
-        context.RegisterPostInitializationOutput(static x => AddInitialCode(x));
+        context.RegisterPostInitializationOutput(static x => AddInitialSource(x));
 
         var syntaxes = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: static (x, _) => Dto.Matches(x),
-                transform: static (x, token) => (x.Node, Dto.GetSymbol(x, token)))
+                predicate: static (x, _) => Core.Predicate(x),
+                transform: static (x, token) => (x.Node, Core.Transform(x, token)!))
             .Where(x => x.Item2 != null);
 
-        // .WithComparer(SyntaxEqualityComparer.Default);
-        context.RegisterSourceOutput(syntaxes, static (x, y) => AddCode(x, y));
+        context.RegisterSourceOutput(syntaxes, static (x, y) => AddGeneratedSource(x, y));
     }
 
-    static void AddInitialCode(IncrementalGeneratorPostInitializationContext context)
+    static void AddInitialSource(IncrementalGeneratorPostInitializationContext context)
     {
-        // Log($"AddInitialCode()");
         var token = context.CancellationToken;
         token.ThrowIfCancellationRequested();
-        context.AddSource($"{Namespace}.InitialCode.g.cs", Template.InitialCode);
+        context.AddSource($"{Namespace}.Initial.g.cs", Template.InitialCode);
     }
 
-    static void AddCode(SourceProductionContext context, (SyntaxNode, ISymbol) arg)
+    static void AddGeneratedSource(SourceProductionContext context, (SyntaxNode, ISymbol) arg)
     {
         var token = context.CancellationToken;
         var (syntax, symbol) = arg;
         token.ThrowIfCancellationRequested();
 
-        var dto = Dto.From(syntax, symbol);
+        var dto = Core.CreateDto(syntax, symbol);
         if (dto != null)
         {
             var template = new Template(dto);
@@ -52,13 +47,4 @@ public class SourceGenerator : IIncrementalGenerator
             context.AddSource($"{dto.TypeName}.g.cs", source);
         }
     }
-}
-
-sealed class SyntaxEqualityComparer : IEqualityComparer<SyntaxNode>
-{
-    public static SyntaxEqualityComparer Default = new();
-
-    public bool Equals(SyntaxNode x, SyntaxNode y) => x.IsEquivalentTo(y);
-
-    public int GetHashCode(SyntaxNode obj) => obj.GetHashCode();
 }
