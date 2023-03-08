@@ -17,11 +17,6 @@ sealed class BreakpointState
         if ((source.Condition ?? "") != (Condition ?? ""))
             return true;
 
-        var sourceHitCount = string.IsNullOrEmpty(source.HitCondition)
-                                ? 0 : int.Parse(source.HitCondition, NumberStyles.Integer, CultureInfo.InvariantCulture);
-        if (sourceHitCount != HitCount)
-            return true;
-
         return false;
     }
 

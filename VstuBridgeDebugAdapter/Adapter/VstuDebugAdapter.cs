@@ -62,7 +62,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             SupportsFunctionBreakpoints = false,
 
             SupportsConditionalBreakpoints = true,
-            SupportsHitConditionalBreakpoints = true,
+            SupportsHitConditionalBreakpoints = false,
 
             SupportsExceptionConditions = false,
             SupportsExceptionOptions = false,
@@ -142,11 +142,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
             // note. breakpoints.Add() -> session.SetBreakpoint()
             var id = Interlocked.Increment(ref breakpointIdCounter);
-            var hitCount = string.IsNullOrEmpty(breakpoint.HitCondition)
-                            ? 0
-                            : int.Parse(breakpoint.HitCondition, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            if (hitCount < 0)
-                throw new NotSupportedException($"hitCount:{hitCount} < 0");
+            var hitCount = 0;
 
             breakpoints.Add(new()
             {
