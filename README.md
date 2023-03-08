@@ -2,7 +2,7 @@
 
 This project is highly experimental and still under development.
 
-The extension works as a stable Unity debugger based on [Visual Studio Tools for Unity (VSTU)](https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/using-visual-studio-tools-for-unity).
+The extension works as a Unity debugger based on [Visual Studio Tools for Unity (VSTU)](https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/using-visual-studio-tools-for-unity).
 
 ## Requirements
 
