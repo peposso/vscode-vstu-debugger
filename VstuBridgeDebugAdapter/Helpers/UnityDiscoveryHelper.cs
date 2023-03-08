@@ -26,11 +26,17 @@ static class UnityDiscoveryHelper
             var processIdValue = editorInstance["process_id"]?.ToString();
             if (string.IsNullOrEmpty(processIdValue))
             {
-                throw new ArgumentException("missing processId");
+                throw new InvalidDataException("EditorInstance.json is invalid.");
+            }
+
+            var processId = int.Parse(processIdValue, CultureInfo.InvariantCulture);
+            var unityProcess = System.Diagnostics.Process.GetProcessesByName("Unity").FirstOrDefault(p => p.Id == processId);
+            if (unityProcess is null)
+            {
+                throw new InvalidOperationException($"Unity Editor (pid:{processId}) is not running at '{projectPath}'.");
             }
 
             // https://github.com/Unity-Technologies/MonoDevelop.Debugger.Soft.Unity/blob/7a99cf7c707d1d60e968c42a9aec8a55413e5deb/UnityProcessDiscovery.cs#L81
-            var processId = int.Parse(processIdValue, CultureInfo.InvariantCulture);
             var port = 56000 + processId % 1000;
             var address = IPAddress.Loopback;
             return (address.ToString(), port, processId);
