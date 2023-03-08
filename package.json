@@ -45,8 +45,13 @@
       "properties": {
         "vstu-debugger.vstuPath": {
           "type": "string",
-          "default": "",
+          "default": "auto",
           "description": "The path to 'Visual Studio Tools for Unity' folder."
+        },
+        "vstu-debugger.targetFramework": {
+          "type": "string",
+          "default": "auto",
+          "description": "The TargetFramework to use when running the debug adapter."
         }
       }
     },

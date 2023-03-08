@@ -5,8 +5,8 @@ using System.Net.Sockets;
 using System.Net;
 using System.Collections.Concurrent;
 using System.Reflection;
-using System.Text.Json.Nodes;
 using VstuBridgeDebugAdaptor.Adapter;
+using Newtonsoft.Json.Linq;
 
 _ = typeof(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree);
 
@@ -54,14 +54,15 @@ Console.CancelKeyPress += (sender, e) =>
         adapter?.Terminate();
 };
 
-logWriter.WriteLine($"ProcessId: {Environment.ProcessId}");
+var pid = System.Diagnostics.Process.GetCurrentProcess().Id; // Environment.ProcessId
+logWriter.WriteLine($"ProcessId: {pid}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine).Assembly.FullName}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Messaging.UnityProcess).Assembly.FullName}");
 logWriter.WriteLine($"Using: {typeof(Mono.Debugger.Soft.VirtualMachine).Assembly.FullName}");
 
 if (version)
 {
-    var packageVersion = JsonNode.Parse(File.ReadAllText("package.json"))?["version"]?.ToString();
+    var packageVersion = JObject.Parse(File.ReadAllText("package.json"))?["version"]?.ToString();
     Console.WriteLine(packageVersion ?? "0.0.0");
     Environment.Exit(0);
 }

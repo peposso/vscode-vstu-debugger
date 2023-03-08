@@ -11,7 +11,8 @@ The extension works as a stable Unity debugger based on [Visual Studio Tools for
 
 ## Extension Settings
 
-* `vstu-debugger.vstuPath`: The path to 'Visual Studio Tools for Unity' folder. (optional)
+* `vstu-debugger.vstuPath`: The path to 'Visual Studio Tools for Unity' folder. (Default:'auto')
+* `vstu-debugger.targetFramework`: The TargetFramework to use when running the debug adapter. (Default:'auto')
 
 ## License
 

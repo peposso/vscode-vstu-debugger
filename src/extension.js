@@ -20,12 +20,27 @@ function output(o) {
 }
 
 /**
- * @returns {{command: string, args: string[], options: {cwd: string, env: {[key: string]: string}}}}
+ * @returns {Promise<{command: string, args: string[], options: {cwd: string, env: {[key: string]: string}}}>}
  */
-function createAdaptorCommand(context) {
+async function createAdaptorCommand(context) {
     const conf = vscode.workspace.getConfiguration('vstu-debugger');
     /** @type {string?} */
-    const vstuPath = conf.get("vstuPath");
+    let vstuPath = conf.get("vstuPath");
+    /** @type {string?} */
+    let targetFramework = conf.get("targetFramework");
+
+    if (!vstuPath || vstuPath == 'auto') {
+        vstuPath = await searchVstuPath();
+    }
+
+    if (!targetFramework || targetFramework == 'auto') {
+        if (process.platform === "win32") {
+            const is2019 = vstuPath.replace(/\\/g, '/').includes('/2019/')
+            targetFramework = is2019 ? "net472" : 'net7.0';
+        } else {
+            targetFramework = 'net7.0';
+        }
+    }
 
     const command = "dotnet";
     const args = [
@@ -36,11 +51,11 @@ function createAdaptorCommand(context) {
 
     const options = {
         cwd: context.extensionPath,
-        env: {},
+        env: {
+            CONF_VSTU_PATH: vstuPath,
+            CONF_TARGET_FRAMEWORK: targetFramework,
+        },
     };
-    if (vstuPath) {
-        options.env["CONF_VSTU_PATH"] = vstuPath;
-    }
 
     return { command, args, options }
 }
@@ -68,10 +83,12 @@ class DebugAdapterFactory {
         }
 
         if (!executable) {
-            const { command, args, options } = createAdaptorCommand(this._context);
+            const { command, args, options } = await createAdaptorCommand(this._context);
             if (!session.configuration.waitDebuggerAttached) {
                 args.push("-c", "Release")
             }
+
+            output({ command, args, options })
             executable = new vscode.DebugAdapterExecutable(command, args, options);
         }
 
@@ -106,6 +123,51 @@ class DebugConfigurationProvider {
 
         return config;
     }
+}
+
+async function searchVstuPath() {
+    const dirs = []
+    if (process.platform === "win32") {
+        const vs2022 = "C:/Program Files/Microsoft Visual Studio/2022/{Edition}/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
+        const vs2019 = "C:/Program Files (x86)/Microsoft Visual Studio/2019/{Edition}/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
+        const editions = ["Community", "Professional", "Enterprise"]
+        for (const edition of editions) {
+            dirs.push(vs2022.replace("{Edition}", edition));
+        }
+        for (const edition of editions) {
+            dirs.push(vs2019.replace("{Edition}", edition));
+        }
+    } else if (process.platform === "darwin") {
+        dirs.push("/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity");
+    }
+
+    const vstuAssemblies = [
+        "SyntaxTree.VisualStudio.Unity.Messaging.dll",
+        "SyntaxTree.VisualStudio.Unity.Common.dll",
+        "SyntaxTree.Mono.Debugger.Soft.dll",
+    ]
+
+    for (const dir of dirs) {
+        if (await existsAll(dir, vstuAssemblies)) {
+            return dir;
+        }
+    }
+
+    return null;
+}
+
+async function existsAll(dir, names) {
+    const fs = vscode.workspace.fs;
+
+    for (const name of names) {
+        try {
+            const uri = vscode.Uri.file(path.join(dir, name))
+            await fs.stat(uri)
+        } catch (e) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
@@ -148,43 +210,12 @@ async function checkRuntime(context) {
         }
     }
 
-    const conf = vscode.workspace.getConfiguration('vstu-debugger');
-    /** @type {string?} */
-    const vstuPath = conf.get("vstuPath");
+    const { options } = await createAdaptorCommand(context);
+    const vstuPath = options.env.CONF_VSTU_PATH;
 
-    const { options } = createAdaptorCommand(context);
-
-    const dirs = []
-    if (vstuPath) {
-        dirs.push(vstuPath)
-    } else if (process.platform === "win32") {
-        const vs2022 = "C:/Program Files/Microsoft Visual Studio/2022/{Edition}/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
-        const vs2019 = "C:/Program Files (x86)/Microsoft Visual Studio/2019/{Edition}/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
-        const editions = ["Community", "Professional", "Enterprise"]
-        for (const edition of editions) {
-            dirs.push(vs2022.replace("{Edition}", edition));
-            dirs.push(vs2019.replace("{Edition}", edition));
-        }
-    } else if (process.platform === "darwin") {
-        dirs.push("/Applications/Visual Studio.app/Contents/MonoBundle/AddIns/MonoDevelop.Unity");
-    }
-
-    const vstuAssemblies = [
-        "SyntaxTree.VisualStudio.Unity.Messaging.dll",
-        "SyntaxTree.VisualStudio.Unity.Common.dll",
-        "SyntaxTree.Mono.Debugger.Soft.dll",
-    ]
-    let found = false;
-    for (const dir of dirs) {
-        if (await existsAll(dir, vstuAssemblies)) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
+    if (!vstuPath) {
         const chosen = await vscode.window.showErrorMessage(
-            "'Visual Studio Tools for Unity' was not found. Install it or check the'vstu-debugger.vstuPath' setting.",
+            "'Visual Studio Tools for Unity' was not found. Install or check the'vstu-debugger.vstuPath' setting.",
             visitGuideButton);
         if (chosen === visitGuideButton) {
             if (process.platform === "darwin") {
@@ -209,21 +240,6 @@ async function checkRuntime(context) {
 
     vscode.window.showErrorMessage("unknown error. Please check the 'VSTU Unity Debugger' output.");
 }
-
-async function existsAll(dir, names) {
-    const fs = vscode.workspace.fs;
-
-    for (const name of names) {
-        try {
-            const uri = vscode.Uri.file(path.join(dir, name))
-            await fs.stat(uri)
-        } catch (e) {
-            return false;
-        }
-    }
-    return true;
-}
-
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -267,6 +283,7 @@ function activate(context) {
                     startAt = Date.now()
                 },
                 onWillReceiveMessage(_message) {
+                    startAt = 0
                 },
                 onDidSendMessage(_message) {
                 },
@@ -280,6 +297,7 @@ function activate(context) {
                     output(`onExit: code:${code}, signal:${signal}`)
                     const elapsed = Date.now() - startAt;
                     if (code != 0 && elapsed < 60000) {
+                        // maybe, server launch failed
                         checkRuntime(context);
                     }
                 },

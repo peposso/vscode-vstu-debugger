@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Net;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 
 namespace VstuBridgeDebugAdaptor.Helpers;
 
@@ -21,7 +21,7 @@ static class UnityDiscoveryHelper
                 throw new FileNotFoundException($"Unity Editor not running at '{projectPath}'");
             }
 
-            var editorInstance = JsonNode.Parse(File.ReadAllText(editorInstanceJsonPath))
+            var editorInstance = JObject.Parse(File.ReadAllText(editorInstanceJsonPath))
                                     ?? throw new InvalidDataException(editorInstanceJsonPath);
             var processIdValue = editorInstance["process_id"]?.ToString();
             if (string.IsNullOrEmpty(processIdValue))

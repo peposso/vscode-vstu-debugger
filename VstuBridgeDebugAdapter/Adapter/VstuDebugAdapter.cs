@@ -170,7 +170,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     protected override SetExceptionBreakpointsResponse HandleSetExceptionBreakpointsRequest(SetExceptionBreakpointsArguments arguments)
     {
-        if (arguments.Filters is not [])
+        if (arguments.Filters.Count > 0)
             throw new NotSupportedException();
 
         return new();
@@ -408,9 +408,9 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     void AttachCore(Dictionary<string, JToken> conf)
     {
-        SendOutput($"Debug Adapter ProcessId: {Environment.ProcessId}");
         if (conf.TryGetValue("waitDebuggerAttached", out var wait) && (bool)wait)
         {
+            SendOutput($"Waiting for debugger to attach...");
             while (!System.Diagnostics.Debugger.IsAttached)
             {
                 System.Threading.Thread.Sleep(100);

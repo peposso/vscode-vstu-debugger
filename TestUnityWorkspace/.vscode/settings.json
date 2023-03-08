@@ -52,7 +52,8 @@
         "temp/":true,
         "Temp/":true
     },
-    // "vstu-debugger.vstuPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
-    // "vstu-debugger.vstuPath": "C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity"
-    "vstu-debugger.vstuPath": ""
+    "vstu-debugger.vstuPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity",
+    // "vstu-debugger.vstuPath": "C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/Extensions/Microsoft/Visual Studio Tools for Unity",
+    // "vstu-debugger.vstuPath": ""
+    "vstu-debugger.targetFramework": "net472",
 }

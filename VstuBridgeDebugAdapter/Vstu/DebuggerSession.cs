@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using Microsoft.VisualStudio.Debugger.Interop;
 using SyntaxTree.VisualStudio.Unity.Debugger;
 using SyntaxTree.VisualStudio.Unity.Projects;
@@ -169,6 +169,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             var tid = GetThreadId(pThread);
             if (pendingBreakpoints.TryGetValue(pendingBreakpoint, out var info))
             {
+                listener.OnOutput($"BreakpointHit: {info.File}:{info.Line} thread={tid}");
                 listener.OnStoppedByBreakpoint(tid, info.File, info.Line, info.Column);
             }
             else
@@ -323,7 +324,13 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
 
     internal IEnumerable<ThreadDto> GetThreads()
     {
-        program.EnumThreads(out var ppEnum);
+        if (program.EnumThreads(out var ppEnum) != 0 || ppEnum == null)
+        {
+            // for safety.
+            Terminate();
+            throw new InvalidOperationException("Failed to EnumThreads");
+        }
+
         threads.Clear();
         foreach (var debugThread in VsDebugHelper.ToArray(ppEnum))
         {
@@ -347,12 +354,13 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             return Enumerable.Empty<FrameDto>();
         }
 
+        IEnumDebugFrameInfo2? ppEnum;
         var flags = enum_FRAMEINFO_FLAGS.FIF_FUNCNAME
                     | enum_FRAMEINFO_FLAGS.FIF_LANGUAGE
                     | enum_FRAMEINFO_FLAGS.FIF_MODULE
                     | enum_FRAMEINFO_FLAGS.FIF_FRAME
                     | enum_FRAMEINFO_FLAGS.FIF_DEBUGINFO;
-        var ret = thread.EnumFrameInfo(flags, 0, out var ppEnum);
+        var ret = thread.EnumFrameInfo(flags, 0, out ppEnum);
         if (ret != 0)
         {
             // maybe dead thread
@@ -559,9 +567,9 @@ enum BreakpointState
 
 sealed class BreakpointInfo
 {
-    public required string File { get; init; }
-    public required int Line { get; init; }
-    public required int Column { get; init; }
-    public required IDebugPendingBreakpoint2 PendingBreakpoint { get; init; }
+    public required string File { get; set; }
+    public required int Line { get; set; }
+    public required int Column { get; set; }
+    public required IDebugPendingBreakpoint2 PendingBreakpoint { get; set; }
     public BreakpointState State { get; set; }
 }
