@@ -2,7 +2,7 @@
   "name": "vscode-vstu-debugger",
   "displayName": "Unofficial VSTU Unity Debugger",
   "description": "a Unity debugger based on VSTU",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "peposso",
   "author": {
     "name": "peposso"
