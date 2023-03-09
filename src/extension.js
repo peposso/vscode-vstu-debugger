@@ -20,7 +20,14 @@ function output(o) {
 }
 
 /**
- * @returns {Promise<{command: string, args: string[], options: {cwd: string, env: {[key: string]: string}}}>}
+ * @returns {Promise<{
+ *  command: string,
+*   args: string[],
+ *  options: {
+ *      cwd: string,
+ *      env: {[key: string]: string}
+ *  }
+ * }>}
  */
 async function createAdaptorCommand(context) {
     const conf = vscode.workspace.getConfiguration('vstu-debugger');
@@ -31,6 +38,7 @@ async function createAdaptorCommand(context) {
 
     if (!vstuPath || vstuPath == 'auto') {
         vstuPath = await searchVstuPath();
+        vstuPath = vstuPath || "";
     }
 
     if (!targetFramework || targetFramework == 'auto') {
@@ -84,6 +92,11 @@ class DebugAdapterFactory {
 
         if (!executable) {
             const { command, args, options } = await createAdaptorCommand(this._context);
+            if (!options.env.CONF_VSTU_PATH) {
+                showVstuNotFoundError();
+                throw new Error("'Visual Studio Tools for Unity' was not found.");
+            }
+
             if (!session.configuration.waitDebuggerAttached) {
                 args.push("-c", "Release")
             }
@@ -170,15 +183,29 @@ async function existsAll(dir, names) {
     return true;
 }
 
+async function showVstuNotFoundError() {
+    const visitGuideButton = "Visit guide page";
+    const vstGuideWinUri = vscode.Uri.parse("https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/getting-started-with-visual-studio-tools-for-unity?pivots=windows");
+    const vstGuideMacUri = vscode.Uri.parse("https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/getting-started-with-visual-studio-tools-for-unity?pivots=macos");
+
+    const chosen = await vscode.window.showErrorMessage(
+        "'Visual Studio Tools for Unity' was not found. Install or check the'vstu-debugger.vstuPath' setting.",
+        visitGuideButton);
+    if (chosen === visitGuideButton) {
+        if (process.platform === "darwin") {
+            vscode.env.openExternal(vstGuideMacUri);
+        } else {
+            vscode.env.openExternal(vstGuideWinUri);
+        }
+    }
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
 async function checkRuntime(context) {
     const visitDownloadButton = "Visit download page";
-    const visitGuideButton = "Visit guide page";
     const netSdkDownloadUri = vscode.Uri.parse("https://dotnet.microsoft.com/download/dotnet/7.0");
-    const vstGuideWinUri = vscode.Uri.parse("https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/getting-started-with-visual-studio-tools-for-unity?pivots=windows");
-    const vstGuideMacUri = vscode.Uri.parse("https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/getting-started-with-visual-studio-tools-for-unity?pivots=macos");
 
     try {
         output("exec> dotnet --version")
@@ -214,16 +241,6 @@ async function checkRuntime(context) {
     const vstuPath = options.env.CONF_VSTU_PATH;
 
     if (!vstuPath) {
-        const chosen = await vscode.window.showErrorMessage(
-            "'Visual Studio Tools for Unity' was not found. Install or check the'vstu-debugger.vstuPath' setting.",
-            visitGuideButton);
-        if (chosen === visitGuideButton) {
-            if (process.platform === "darwin") {
-                vscode.env.openExternal(vstGuideMacUri);
-            } else {
-                vscode.env.openExternal(vstGuideWinUri);
-            }
-        }
         return;
     }
 
