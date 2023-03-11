@@ -4,6 +4,13 @@ This project is highly experimental and still under development.
 
 The extension works as a Unity debugger based on [Visual Studio Tools for Unity (VSTU)](https://learn.microsoft.com/visualstudio/gamedev/unity/get-started/using-visual-studio-tools-for-unity).
 
+## Features
+
+* Expression Conditional Breakpoints
+* Hit Count Conditional Breakpoints
+    * '{hitCount}' or '{operator} {hitCount}'
+    * Available Operators: =, >, >=, %
+
 ## Requirements
 
 * .Net 7.0 SDK
