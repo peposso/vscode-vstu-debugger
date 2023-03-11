@@ -300,12 +300,11 @@ function activate(context) {
                     startAt = Date.now()
                 },
                 onWillReceiveMessage(_message) {
-                    startAt = 0
                 },
                 onDidSendMessage(_message) {
+                    startAt = 0
                 },
                 onWillStopSession() {
-                    output(`onWillStopSession: ${session.id}`)
                 },
                 onError(error) {
                     output(`onError: ${error}`)
@@ -313,6 +312,7 @@ function activate(context) {
                 onExit(code, signal) {
                     output(`onExit: code:${code}, signal:${signal}`)
                     const elapsed = Date.now() - startAt;
+                    output(`elapsed: ${elapsed}`)
                     if (code != 0 && elapsed < 60000) {
                         // maybe, server launch failed
                         checkRuntime(context);

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Debugger.Interop;
+using VstuBridgeDebugAdaptor.Interfaces;
 
 namespace VstuBridgeDebugAdaptor.Vstu;
 
@@ -7,13 +8,15 @@ sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
 {
     readonly DebugDocumentPosition position;
     readonly string condition;
-    private readonly int hitCount;
+    readonly int hitCount;
+    readonly HitConditionKind hitCondition;
 
-    public DebugBreakpointRequest(DebugDocumentPosition position, string condition, int hitCount)
+    public DebugBreakpointRequest(DebugDocumentPosition position, string condition, int hitCount, HitConditionKind hitCondition)
     {
         this.position = position;
         this.condition = condition;
         this.hitCount = hitCount;
+        this.hitCondition = hitCondition;
         LocationType = enum_BP_LOCATION_TYPE.BPLT_CODE_FILE_LINE;
     }
 
@@ -50,12 +53,19 @@ sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
             };
         }
 
-        if (hitCount > 0)
+        if (hitCondition is not HitConditionKind.None)
         {
             info.bpPassCount = new BP_PASSCOUNT
             {
-                dwPassCount = (uint)hitCount,
-                stylePassCount = enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_EQUAL,
+                dwPassCount = (uint)hitCount + (hitCondition is HitConditionKind.GreaterThan ? 1u : 0u),
+                stylePassCount = hitCondition switch
+                {
+                    HitConditionKind.Equal => enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_EQUAL,
+                    HitConditionKind.GreaterThan => enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_EQUAL_OR_GREATER,
+                    HitConditionKind.GreaterThanOrEqual => enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_EQUAL_OR_GREATER,
+                    HitConditionKind.Modular => enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_MOD,
+                    _ => enum_BP_PASSCOUNT_STYLE.BP_PASSCOUNT_EQUAL,
+                },
             };
         }
 

@@ -129,7 +129,6 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         {
             var ev = (IDebugBreakpointBoundEvent2)pEvent;
             ev.GetPendingBreakpoint(out IDebugPendingBreakpoint2 ppPendingBP);
-            ppPendingBP.Enable(1);
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
                 info.State = BreakpointState.Verified;
@@ -167,16 +166,15 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             ppEnum.Next(1u, bp, ref fetched);
             bp[0].GetPendingBreakpoint(out var pendingBreakpoint);
             var tid = GetThreadId(pThread);
-            if (pendingBreakpoints.TryGetValue(pendingBreakpoint, out var info))
-            {
-                listener.OnOutput($"BreakpointHit: {info.File}:{info.Line} thread={tid}");
-                listener.OnStoppedByBreakpoint(tid, info.File, info.Line, info.Column);
-            }
-            else
+            if (!pendingBreakpoints.TryGetValue(pendingBreakpoint, out var info))
             {
                 listener.OnOutput("DebugBreak at unknown breakpoint...");
                 listener.OnStoppedByBreakpoint(tid, "", 0, 0);
+                return 0;
             }
+
+            listener.OnOutput($"BreakpointHit: {info.File}:{info.Line} thread={tid}");
+            listener.OnStoppedByBreakpoint(tid, info.File, info.Line, info.Column);
 
             return 0;
         }
@@ -467,17 +465,16 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         return (int)(0x7fff_ffff & tid);
     }
 
-    internal void AddBreakpoint(string path, int line, int column, string condition, int hitCount)
+    internal void AddBreakpoint(string path, int line, int column, string condition, int hitCount, HitConditionKind hitCondition)
     {
         if (breakpoints.TryGetValue((path, line, column), out var info))
         {
             return;
         }
 
-        /// <see cref="SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine.CreatePendingBreakpoint" />
-        var ret = engine.CreatePendingBreakpoint(
-            new DebugBreakpointRequest(new DebugDocumentPosition(path, line, column), condition, hitCount),
-            out var pendingBreakpoint);
+        var position = new DebugDocumentPosition(path, line, column);
+        var request = new DebugBreakpointRequest(position, condition, hitCount, hitCondition);
+        var ret = engine.CreatePendingBreakpoint(request, out var pendingBreakpoint);
         if (ret != 0)
         {
             throw new InvalidOperationException($"Failed to CreatePendingBreakpoint: {ret}");
@@ -494,10 +491,10 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         breakpoints[(path, line, column)] = info;
         pendingBreakpoints[pendingBreakpoint] = info;
 
-        if (pendingBreakpoint.Bind() == 0)
-        {
-            pendingBreakpoint.Enable(1);
-        }
+        pendingBreakpoint.Bind();
+
+        // may be, need to Enable even if Bind fails...
+        pendingBreakpoint.Enable(1);
     }
 
     internal void DeleteBreakpoint(string path, int line, int column)

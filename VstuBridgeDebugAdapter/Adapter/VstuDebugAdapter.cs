@@ -16,6 +16,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
     readonly Dictionary<string, List<BreakpointState>> breakpointsBySource = new();
     DebuggerSession session = null!;
     int breakpointIdCounter;
+    bool threadStartedAtFirst;
 
     public VstuDebugAdapter(Stream input, Stream output, TextWriter logger)
     {
@@ -62,7 +63,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             SupportsFunctionBreakpoints = false,
 
             SupportsConditionalBreakpoints = true,
-            SupportsHitConditionalBreakpoints = false,
+            SupportsHitConditionalBreakpoints = true,
 
             SupportsExceptionConditions = false,
             SupportsExceptionOptions = false,
@@ -142,7 +143,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
             // note. breakpoints.Add() -> session.SetBreakpoint()
             var id = Interlocked.Increment(ref breakpointIdCounter);
-            var hitCount = 0;
+            var (hitCount, hitCondition) = BreakpointState.ParseHitCondition(breakpoint.HitCondition);
 
             breakpoints.Add(new()
             {
@@ -151,10 +152,11 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
                 Column = column,
                 Condition = breakpoint.Condition,
                 HitCount = hitCount,
+                HitCondition = hitCondition,
             });
 
             SendOutput($"Request Add Breakpoint: {source.Path}:{breakpoint.Line}:{column}");
-            session.AddBreakpoint(source.Path, breakpoint.Line, column, breakpoint.Condition, hitCount);
+            session.AddBreakpoint(source.Path, breakpoint.Line, column, breakpoint.Condition, hitCount, hitCondition);
         }
 
         breakpoints.Sort((x, y) => (x.Line, x.Column).CompareTo((y.Line, y.Column)));
@@ -319,8 +321,6 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     public void OnLoadCompleted()
     {
-        // ready to accept breakpoints
-        Protocol.SendEvent(new InitializedEvent());
     }
 
     public void OnOutput(string s)
@@ -330,6 +330,14 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     public void OnThreadStarted(int threadId)
     {
+        if (!threadStartedAtFirst)
+        {
+            // ready to accept breakpoints
+            threadStartedAtFirst = true;
+            SendOutput($"Initialized");
+            Protocol.SendEvent(new InitializedEvent());
+        }
+
         SendOutput($"OnThreadStarted: #{threadId}");
         Protocol.SendEvent(new ThreadEvent(ThreadEvent.ReasonValue.Started, threadId));
     }

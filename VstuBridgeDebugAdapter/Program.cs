@@ -54,7 +54,11 @@ Console.CancelKeyPress += (sender, e) =>
         adapter?.Terminate();
 };
 
-var pid = System.Diagnostics.Process.GetCurrentProcess().Id; // Environment.ProcessId
+#if NET7_0_OR_GREATER
+var pid = Environment.ProcessId;
+#else
+var pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+#endif
 logWriter.WriteLine($"ProcessId: {pid}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Debugger.UnityEngine).Assembly.FullName}");
 logWriter.WriteLine($"Using: {typeof(SyntaxTree.VisualStudio.Unity.Messaging.UnityProcess).Assembly.FullName}");
