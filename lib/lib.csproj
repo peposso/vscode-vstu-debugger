@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PublishDir>publish</PublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.Interop.10.0" Version="17.4.33103.184" />
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.InteropA" Version="17.4.33103.184" />
+    <PackageReference Include="Microsoft.VisualStudio.Shared.VSCodeDebugProtocol" Version="17.2.60629.1" />
+  </ItemGroup>
+
+  <Target Name="CustomAfterPublish" AfterTargets="Publish">
+    <Delete Files="$(PublishDir)\$(AssemblyName).deps.json" />
+    <Delete Files="$(PublishDir)\$(AssemblyName).dll" />
+    <Delete Files="$(PublishDir)\$(AssemblyName).pdb" />
+  </Target>
+
+</Project>

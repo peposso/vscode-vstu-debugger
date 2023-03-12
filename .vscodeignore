@@ -12,6 +12,8 @@ cspell.json
 ImplementGenerator/bin/**
 ImplementGenerator/obj/**
 ImplementGenerator.Tests/**
+lib/bin/**
+lib/obj/**
 node_modules/**
 TestUnityWorkspace/**
 VstuBridgeDebugAdapter/bin/**
