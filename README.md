@@ -10,6 +10,7 @@ The extension works as a Unity debugger based on [Visual Studio Tools for Unity 
 * Hit Count Conditional Breakpoints
     * '{hitCount}' or '{operator} {hitCount}'
     * Available Operators: =, >, >=, %
+* Jump execution point to Cursor
 
 ## Requirements
 

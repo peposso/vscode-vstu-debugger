@@ -14,8 +14,10 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 {
     readonly TextWriter logger;
     readonly Dictionary<string, List<BreakpointState>> breakpointsBySource = new();
+    readonly Dictionary<int, (string, int)> gotoTargets = new();
     DebuggerSession session = null!;
     int breakpointIdCounter;
+    int gotoTargetIdCounter;
     bool threadStartedAtFirst;
 
     public VstuDebugAdapter(Stream input, Stream output, TextWriter logger)
@@ -73,6 +75,8 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             SupportsTerminateRequest = true,
 
             ExceptionBreakpointFilters = new(),
+
+            SupportsGotoTargetsRequest = true,
         };
     }
 
@@ -290,6 +294,48 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
             Result = result.Value,
             VariablesReference = result.VariablesReference,
         };
+    }
+
+    protected override GotoTargetsResponse HandleGotoTargetsRequest(GotoTargetsArguments arguments)
+    {
+        if (!session.CanGoto(arguments.Source.Path, arguments.Line))
+        {
+            return new();
+        }
+
+        var targetId = Interlocked.Increment(ref gotoTargetIdCounter);
+        gotoTargets.Add(targetId, (arguments.Source.Path, arguments.Line));
+
+        return new()
+        {
+            Targets = new()
+            {
+                new()
+                {
+                    Id = targetId,
+                    Line = arguments.Line,
+                },
+            },
+        };
+    }
+
+    protected override GotoResponse HandleGotoRequest(GotoArguments arguments)
+    {
+        var threadId = arguments.ThreadId;
+        var targetId = arguments.TargetId;
+        var (path, line) = gotoTargets[targetId];
+        if (session.Goto(threadId, path, line))
+        {
+            var stopEvent = new StoppedEvent(StoppedEvent.ReasonValue.Goto)
+            {
+                ThreadId = threadId,
+            };
+
+            Task.Delay(100)
+                .ContinueWith(_ => Protocol.SendEvent(stopEvent));
+        }
+
+        return new();
     }
 
     void SendOutput(string text, bool isError = false)

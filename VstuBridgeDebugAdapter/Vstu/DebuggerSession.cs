@@ -32,7 +32,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
     readonly ConcurrentDictionary<int, IDebugThread2> threads = new();
     readonly ConcurrentDictionary<(string, int, int), BreakpointInfo> breakpoints = new();
     readonly ConcurrentDictionary<IDebugPendingBreakpoint2, BreakpointInfo> pendingBreakpoints = new();
-    readonly ConcurrentDictionary<int, FRAMEINFO> frames = new();
+    readonly ConcurrentDictionary<int, FrameInfo> frames = new();
     readonly ConcurrentDictionary<int, IDebugProperty2> properties = new();
     IDebugProcess2 process = null!;
     int frameIdCounter;
@@ -131,7 +131,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             ev.GetPendingBreakpoint(out IDebugPendingBreakpoint2 ppPendingBP);
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
-                info.State = BreakpointState.Verified;
+                info.Kind = BreakpointPendingKind.Verified;
                 listener.OnOutput($"Breakpoint Bound: {info.File}:{info.Line}:{info.Column}");
                 listener.OnBreakpointVerified(info.File, info.Line, info.Column, verified: true);
             }
@@ -151,7 +151,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
                 listener.OnOutput($"Breakpoint Error: {info.File}:{info.Line}:{info.Column}");
-                info.State = BreakpointState.Error;
+                info.Kind = BreakpointPendingKind.Error;
             }
 
             return 0;
@@ -371,7 +371,6 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         foreach (var frameInfo in VsDebugHelper.ToArray(ppEnum))
         {
             var frameId = Interlocked.Increment(ref frameIdCounter);
-            frames[frameId] = frameInfo;
 
             var name = frameInfo.m_bstrFuncName;
             var frame = frameInfo.m_pFrame;
@@ -379,6 +378,14 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             if (docContext == null)
             {
                 result.Add(new(frameId, name, "", 0, 0));
+                frames[frameId] = new()
+                {
+                    File = "",
+                    Line = 0,
+                    Info = frameInfo,
+                    Frame = frame,
+                    ThreadId = threadId,
+                };
                 continue;
             }
 
@@ -387,6 +394,14 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             var line = (int)(begin[0].dwLine + 1);
             var column = (int)begin[0].dwColumn;
             result.Add(new(frameId, name, sourcePath, line, column));
+            frames[frameId] = new()
+            {
+                File = sourcePath,
+                Line = line,
+                Info = frameInfo,
+                Frame = frame,
+                ThreadId = threadId,
+            };
         }
 
         return result;
@@ -399,7 +414,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             return 0;
         }
 
-        info.m_pFrame.GetDebugProperty(out var property);
+        info.Frame.GetDebugProperty(out var property);
         if (property is null)
         {
             return 0;
@@ -486,7 +501,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             Line = line,
             Column = column,
             PendingBreakpoint = pendingBreakpoint,
-            State = BreakpointState.Pending,
+            Kind = BreakpointPendingKind.Pending,
         };
         breakpoints[(path, line, column)] = info;
         pendingBreakpoints[pendingBreakpoint] = info;
@@ -523,7 +538,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
         if (!frames.TryGetValue(frameId, out var frame))
             return VariableDto.Empty;
 
-        var ret = frame.m_pFrame.GetExpressionContext(out var expressionContext);
+        var ret = frame.Info.m_pFrame.GetExpressionContext(out var expressionContext);
         if (ret != 0 || expressionContext == null)
             return VariableDto.Empty;
 
@@ -553,20 +568,80 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
 
         return new(name, value, propertyId);
     }
-}
 
-enum BreakpointState
-{
-    Pending,
-    Verified,
-    Error,
-}
+    internal bool CanGoto(string path, int line)
+    {
+        foreach (var (_, frameInfo) in frames)
+        {
+            var file = frameInfo.File;
+            if (string.IsNullOrEmpty(file) || !string.Equals(file, path, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-sealed class BreakpointInfo
-{
-    public required string File { get; set; }
-    public required int Line { get; set; }
-    public required int Column { get; set; }
-    public required IDebugPendingBreakpoint2 PendingBreakpoint { get; set; }
-    public BreakpointState State { get; set; }
+            var destCodeContext = GetCodeContextFrom(frameInfo, line);
+            if (destCodeContext == null)
+            {
+                continue;
+            }
+
+            var thread = threads[frameInfo.ThreadId];
+            if (thread.CanSetNextStatement(frameInfo.Info.m_pFrame, destCodeContext) == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal bool Goto(int threadId, string path, int line)
+    {
+        var success = false;
+        foreach (var (_, frameInfo) in frames)
+        {
+            if (frameInfo.ThreadId != threadId)
+                continue;
+
+            var file = frameInfo.File;
+            if (string.IsNullOrEmpty(file) || !string.Equals(file, path, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var destCodeContext = GetCodeContextFrom(frameInfo, line);
+            var thread = threads[frameInfo.ThreadId];
+            if (thread.CanSetNextStatement(frameInfo.Frame, destCodeContext) == 0)
+            {
+                if (thread.SetNextStatement(frameInfo.Frame, destCodeContext) != 0)
+                {
+                    throw new InvalidOperationException("Failed to SetNextStatement");
+                }
+
+                success = true;
+            }
+        }
+
+        if (success)
+        {
+            frames.Clear();
+            properties.Clear();
+        }
+
+        return success;
+    }
+
+    IDebugCodeContext2? GetCodeContextFrom(FrameInfo frameInfo, int line)
+    {
+        var frame = frameInfo.Frame;
+        frame.GetCodeContext(out var codeContext);
+        if (codeContext == null)
+        {
+            return null;
+        }
+
+        var nextLine = line;
+        var currentLine = frameInfo.Line;
+        codeContext.Add((uint)(nextLine - currentLine), out var memContext);
+
+        return memContext as IDebugCodeContext2;
+    }
 }
