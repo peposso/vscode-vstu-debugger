@@ -1,6 +1,6 @@
 namespace VstuBridgeDebugAdaptor.Vstu;
 
-enum BreakpointPendingKind
+enum BreakpointPendingState
 {
     Pending,
     Verified,

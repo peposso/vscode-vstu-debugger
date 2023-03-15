@@ -6,7 +6,7 @@ namespace VstuBridgeDebugAdaptor.Vstu;
 
 sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
 {
-    readonly DebugDocumentPosition position;
+    readonly object position;
     readonly string condition;
     readonly int hitCount;
     readonly HitConditionKind hitCondition;
@@ -20,7 +20,14 @@ sealed class DebugBreakpointRequest : IDebugBreakpointRequest2
         LocationType = enum_BP_LOCATION_TYPE.BPLT_CODE_FILE_LINE;
     }
 
-    public DebugDocumentPosition Position => position;
+    public DebugBreakpointRequest(DebugFunctionPosition position, string condition, int hitCount, HitConditionKind hitCondition)
+    {
+        this.position = position;
+        this.condition = condition;
+        this.hitCount = hitCount;
+        this.hitCondition = hitCondition;
+        LocationType = enum_BP_LOCATION_TYPE.BPLT_CODE_FUNC_OFFSET;
+    }
 
     public enum_BP_LOCATION_TYPE LocationType { get; set; }
 

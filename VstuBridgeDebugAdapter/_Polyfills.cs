@@ -27,8 +27,19 @@ namespace System.Runtime.CompilerServices
     { }
 }
 
+namespace System.Diagnostics.CodeAnalysis
+{
+    /// <summary>
+    /// Specifies that this constructor sets all required members for the current type,
+    /// and callers do not need to set any required members themselves.
+    /// </summary>
+    [global::System.AttributeUsage(global::System.AttributeTargets.Constructor, AllowMultiple = false, Inherited = false)]
+    internal sealed class SetsRequiredMembersAttribute : global::System.Attribute
+    {
+    }
+}
 
-internal static class ShimsExtensions
+internal static class PolyfillsExtensions
 {
     public static void Deconstruct<TKey, TValue>(this KeyValuePair<TKey, TValue> pair, out TKey key, out TValue value)
     {

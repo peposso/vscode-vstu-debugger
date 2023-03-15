@@ -30,7 +30,6 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
     private readonly IDebugProgram3 program;
     private readonly IDebugPort2 port;
     readonly ConcurrentDictionary<int, IDebugThread2> threads = new();
-    readonly ConcurrentDictionary<(string, int, int), BreakpointInfo> breakpoints = new();
     readonly ConcurrentDictionary<IDebugPendingBreakpoint2, BreakpointInfo> pendingBreakpoints = new();
     readonly ConcurrentDictionary<int, FrameInfo> frames = new();
     readonly ConcurrentDictionary<int, IDebugProperty2> properties = new();
@@ -131,9 +130,19 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             ev.GetPendingBreakpoint(out IDebugPendingBreakpoint2 ppPendingBP);
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
-                info.Kind = BreakpointPendingKind.Verified;
-                listener.OnOutput($"Breakpoint Bound: {info.File}:{info.Line}:{info.Column}");
-                listener.OnBreakpointVerified(info.File, info.Line, info.Column, verified: true);
+                info.PendingState = BreakpointPendingState.Verified;
+
+                switch (info.Kind)
+                {
+                    case BreakpointKind.FileLine:
+                        listener.OnOutput($"Breakpoint Bound: {info.File}:{info.Line}:{info.Column}");
+                        break;
+                    case BreakpointKind.Function:
+                        listener.OnOutput($"Breakpoint Bound: {info.FunctionName}");
+                        break;
+                }
+
+                listener.OnBreakpointVerified(info.File, info.Line, info.Column, info.FunctionName, verified: true);
             }
             else
             {
@@ -151,7 +160,7 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             if (pendingBreakpoints.TryGetValue(ppPendingBP, out var info))
             {
                 listener.OnOutput($"Breakpoint Error: {info.File}:{info.Line}:{info.Column}");
-                info.Kind = BreakpointPendingKind.Error;
+                info.PendingState = BreakpointPendingState.Error;
             }
 
             return 0;
@@ -169,12 +178,11 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
             if (!pendingBreakpoints.TryGetValue(pendingBreakpoint, out var info))
             {
                 listener.OnOutput("DebugBreak at unknown breakpoint...");
-                listener.OnStoppedByBreakpoint(tid, "", 0, 0);
+                listener.OnStoppedByBreakpoint(tid, "", 0, 0, "");
                 return 0;
             }
 
-            listener.OnOutput($"BreakpointHit: {info.File}:{info.Line} thread={tid}");
-            listener.OnStoppedByBreakpoint(tid, info.File, info.Line, info.Column);
+            listener.OnStoppedByBreakpoint(tid, info.File, info.Line, info.Column, info.FunctionName);
 
             return 0;
         }
@@ -482,29 +490,65 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
 
     internal void AddBreakpoint(string path, int line, int column, string condition, int hitCount, HitConditionKind hitCondition)
     {
-        if (breakpoints.TryGetValue((path, line, column), out var info))
+        foreach (var (_, x) in pendingBreakpoints)
         {
-            return;
+            if (x.Kind == BreakpointKind.FileLine
+                && x.File == path
+                && x.Line == line
+                && x.Column == column)
+            {
+                return;
+            }
         }
 
         var position = new DebugDocumentPosition(path, line, column);
         var request = new DebugBreakpointRequest(position, condition, hitCount, hitCondition);
+        var info = new BreakpointInfo()
+        {
+            Kind = BreakpointKind.FileLine,
+            File = path,
+            Line = line,
+            Column = column,
+        };
+
+        AddBreakpointCore(request, info);
+    }
+
+    internal void AddBreakpoint(string functionName, string condition, int hitCount, HitConditionKind hitCondition)
+    {
+        foreach (var (_, x) in pendingBreakpoints)
+        {
+            if (x.Kind == BreakpointKind.Function
+                && x.FunctionName == functionName)
+            {
+                return;
+            }
+        }
+
+        var position = new DebugFunctionPosition(functionName);
+        var request = new DebugBreakpointRequest(position, condition, hitCount, hitCondition);
+        var info = new BreakpointInfo()
+        {
+            Kind = BreakpointKind.Function,
+            FunctionName = functionName,
+        };
+
+        AddBreakpointCore(request, info);
+    }
+
+    void AddBreakpointCore(DebugBreakpointRequest request, BreakpointInfo info)
+    {
         var ret = engine.CreatePendingBreakpoint(request, out var pendingBreakpoint);
         if (ret != 0)
         {
             throw new InvalidOperationException($"Failed to CreatePendingBreakpoint: {ret}");
         }
 
-        info = new BreakpointInfo()
+        pendingBreakpoints[pendingBreakpoint] = info with
         {
-            File = path,
-            Line = line,
-            Column = column,
             PendingBreakpoint = pendingBreakpoint,
-            Kind = BreakpointPendingKind.Pending,
+            PendingState = BreakpointPendingState.Pending,
         };
-        breakpoints[(path, line, column)] = info;
-        pendingBreakpoints[pendingBreakpoint] = info;
 
         pendingBreakpoint.Bind();
 
@@ -514,11 +558,43 @@ sealed class DebuggerSession : IDebugEventCallback2, IDebugPortNotify2, IProject
 
     internal void DeleteBreakpoint(string path, int line, int column)
     {
-        if (!breakpoints.TryGetValue((path, line, column), out var info))
+        BreakpointInfo? info = null;
+        foreach (var (_, x) in pendingBreakpoints)
+        {
+            if (x.Kind == BreakpointKind.FileLine
+                && x.File == path
+                && x.Line == line
+                && x.Column == column)
+            {
+                info = x;
+                break;
+            }
+        }
+
+        if (info is null)
             return;
 
         info.PendingBreakpoint.Delete();
-        breakpoints.TryRemove((path, line, column), out _);
+        pendingBreakpoints.TryRemove(info.PendingBreakpoint, out _);
+    }
+
+    internal void DeleteBreakpoint(string functionName)
+    {
+        BreakpointInfo? info = null;
+        foreach (var (_, x) in pendingBreakpoints)
+        {
+            if (x.Kind == BreakpointKind.Function
+                && x.FunctionName == functionName)
+            {
+                info = x;
+                break;
+            }
+        }
+
+        if (info is null)
+            return;
+
+        info.PendingBreakpoint.Delete();
         pendingBreakpoints.TryRemove(info.PendingBreakpoint, out _);
     }
 

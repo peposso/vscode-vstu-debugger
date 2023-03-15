@@ -32,5 +32,11 @@ public class NewBehaviourScript : MonoBehaviour
         }
 
         Debug.Log($"sum={sum}");
+        Test2();
+    }
+
+    void Test2()
+    {
+        Debug.Log("Test2");
     }
 }

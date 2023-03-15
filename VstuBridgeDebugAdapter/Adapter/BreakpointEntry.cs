@@ -5,17 +5,46 @@ using VstuBridgeDebugAdaptor.Interfaces;
 
 namespace VstuBridgeDebugAdaptor.Adapter;
 
-sealed class BreakpointState
+sealed record BreakpointEntry
 {
-    public required int Id { get; init; }
-    public required int Line { get; init; }
-    public required int Column { get; init; }
+    public BreakpointEntry(SourceBreakpoint source, int id)
+    {
+        Id = id;
+        Line = source.Line;
+        Column = source.Column ?? 0;
+        Condition = source.Condition;
+        (HitCount, HitCondition) = ParseHitCondition(source.HitCondition);
+    }
+
+    public BreakpointEntry(FunctionBreakpoint function, int id)
+    {
+        Id = id;
+        Name = function.Name;
+        Condition = function.Condition;
+        (HitCount, HitCondition) = ParseHitCondition(function.HitCondition);
+    }
+
+    public int Id { get; init; }
+    public int Line { get; init; }
+    public int Column { get; init; }
+    public string Name { get; init; } = "";
     public bool Verified { get; set; }
     public string Condition { get; set; } = "";
     public int HitCount { get; set; }
     public HitConditionKind HitCondition { get; set; }
 
     static readonly Regex Regex = new(@"^(?<kind>=|==|>|>=|%)?\s*(?<count>\d+)$", RegexOptions.Compiled);
+
+    internal bool EqualsPosition(BreakpointEntry other)
+    {
+        if (other is null
+            || Line != other.Line
+            || Column != other.Column
+            || Name != other.Name)
+            return false;
+
+        return true;
+    }
 
     internal static (int count, HitConditionKind kind) ParseHitCondition(string? condition)
     {
@@ -43,7 +72,17 @@ sealed class BreakpointState
         return (count, kind);
     }
 
-    internal bool IsConditionChanged(SourceBreakpoint source)
+    internal bool IsConditionChanged(BreakpointEntry other)
+    {
+        if (other.Condition != Condition
+            || other.HitCount != HitCount
+            || other.HitCondition != HitCondition)
+            return true;
+
+        return false;
+    }
+
+    internal bool IsConditionChanged(FunctionBreakpoint source)
     {
         if ((source.Condition ?? "") != (Condition ?? ""))
             return true;
@@ -56,6 +95,15 @@ sealed class BreakpointState
 
     internal Breakpoint ToResponse()
     {
+        if (!string.IsNullOrEmpty(Name))
+        {
+            return new()
+            {
+                Id = Id,
+                Verified = Verified,
+            };
+        }
+
         return new()
         {
             Id = Id,

@@ -13,7 +13,8 @@ namespace VstuBridgeDebugAdaptor.Adapter;
 sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 {
     readonly TextWriter logger;
-    readonly Dictionary<string, List<BreakpointState>> breakpointsBySource = new();
+    readonly Dictionary<string, List<BreakpointEntry>> breakpointsBySource = new(StringComparer.OrdinalIgnoreCase);
+    readonly List<BreakpointEntry> functionBreakpoints = new();
     readonly Dictionary<int, (string, int)> gotoTargets = new();
     DebuggerSession session = null!;
     int breakpointIdCounter;
@@ -62,7 +63,7 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         return new()
         {
             SupportsConfigurationDoneRequest = false,
-            SupportsFunctionBreakpoints = false,
+            SupportsFunctionBreakpoints = true,
 
             SupportsConditionalBreakpoints = true,
             SupportsHitConditionalBreakpoints = true,
@@ -117,57 +118,70 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
 
     protected override SetBreakpointsResponse HandleSetBreakpointsRequest(SetBreakpointsArguments arguments)
     {
-        var source = arguments.Source;
-        if (!breakpointsBySource.TryGetValue(source.Path, out var breakpoints))
+        var sourcePath = arguments.Source.Path;
+        if (!breakpointsBySource.TryGetValue(sourcePath, out var breakpoints))
         {
-            breakpointsBySource[source.Path] = breakpoints = new();
+            breakpointsBySource.Add(sourcePath, breakpoints = new());
         }
 
-        for (var i = 0; i < breakpoints.Count; ++i)
-        {
-            var state = breakpoints[i];
-            var found = arguments.Breakpoints.FirstOrDefault(b => b.Line == state.Line && (b.Column ?? 0) == state.Column);
-            if (found == null || state.IsConditionChanged(found))
-            {
-                SendOutput($"Request Delete Breakpoint: {source.Path}:{state.Line}:{state.Column}");
-                session.DeleteBreakpoint(source.Path, state.Line, state.Column);
-                breakpoints.RemoveAt(i);
-                --i;
-            }
-        }
+        var args = arguments.Breakpoints.Select(x => new BreakpointEntry(x, 0)).ToList();
+        SetBreakpointsCore(
+            breakpoints,
+            args,
+            x => session.AddBreakpoint(sourcePath, x.Line, x.Column, x.Condition, x.HitCount, x.HitCondition),
+            x => session.DeleteBreakpoint(sourcePath, x.Line, x.Column));
 
-        foreach (var breakpoint in arguments.Breakpoints)
-        {
-            var column = breakpoint.Column ?? 0;
-            var found = breakpoints.FirstOrDefault(x => x.Line == breakpoint.Line && x.Column == column);
-            if (found != null)
-            {
-                continue;
-            }
-
-            // note. breakpoints.Add() -> session.SetBreakpoint()
-            var id = Interlocked.Increment(ref breakpointIdCounter);
-            var (hitCount, hitCondition) = BreakpointState.ParseHitCondition(breakpoint.HitCondition);
-
-            breakpoints.Add(new()
-            {
-                Id = id,
-                Line = breakpoint.Line,
-                Column = column,
-                Condition = breakpoint.Condition,
-                HitCount = hitCount,
-                HitCondition = hitCondition,
-            });
-
-            SendOutput($"Request Add Breakpoint: {source.Path}:{breakpoint.Line}:{column}");
-            session.AddBreakpoint(source.Path, breakpoint.Line, column, breakpoint.Condition, hitCount, hitCondition);
-        }
-
-        breakpoints.Sort((x, y) => (x.Line, x.Column).CompareTo((y.Line, y.Column)));
         return new()
         {
             Breakpoints = breakpoints.Select(x => x.ToResponse()).ToList(),
         };
+    }
+
+    protected override SetFunctionBreakpointsResponse HandleSetFunctionBreakpointsRequest(SetFunctionBreakpointsArguments arguments)
+    {
+        var args = arguments.Breakpoints.Select(x => new BreakpointEntry(x, 0)).ToList();
+        SetBreakpointsCore(
+            functionBreakpoints,
+            args,
+            x => session.AddBreakpoint(x.Name, x.Condition, x.HitCount, x.HitCondition),
+            x => session.DeleteBreakpoint(x.Name));
+
+        return new()
+        {
+            Breakpoints = functionBreakpoints.Select(x => x.ToResponse()).ToList(),
+        };
+    }
+
+    void SetBreakpointsCore(List<BreakpointEntry> currentEntries, List<BreakpointEntry> arguments, Action<BreakpointEntry> addAction, Action<BreakpointEntry> deleteAction)
+    {
+        for (var i = 0; i < currentEntries.Count; ++i)
+        {
+            var entry = currentEntries[i];
+            var found = arguments.FirstOrDefault(x => x.EqualsPosition(entry));
+            if (found == null || entry.IsConditionChanged(found))
+            {
+                deleteAction(entry);
+                currentEntries.RemoveAt(i);
+                --i;
+            }
+        }
+
+        var temp = currentEntries.ToArray();
+        currentEntries.Clear();
+        foreach (var arg in arguments)
+        {
+            var found = temp.FirstOrDefault(x => x.EqualsPosition(arg));
+            if (found != null)
+            {
+                currentEntries.Add(found);  // reuse
+                continue;
+            }
+
+            var id = Interlocked.Increment(ref breakpointIdCounter);
+            var newEntry = arg with { Id = id };
+            currentEntries.Add(newEntry);
+            addAction(newEntry);
+        }
     }
 
     protected override SetExceptionBreakpointsResponse HandleSetExceptionBreakpointsRequest(SetExceptionBreakpointsArguments arguments)
@@ -402,9 +416,9 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         Protocol.SendEvent(new ModuleEvent(ModuleEvent.ReasonValue.New, module));
     }
 
-    public void OnBreakpointVerified(string file, int line, int column, bool verified)
+    public void OnBreakpointVerified(string file, int line, int column, string functionName, bool verified)
     {
-        var bp = FindBreakpoint(file, line, column);
+        var bp = FindBreakpoint(file, line, column, functionName);
         if (bp == null)
         {
             SendOutput($"unknown breakpoint: {file}:{line}:{column}");
@@ -431,9 +445,9 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         });
     }
 
-    public void OnStoppedByBreakpoint(int threadId, string file, int line, int column)
+    public void OnStoppedByBreakpoint(int threadId, string file, int line, int column, string functionName)
     {
-        var bp = FindBreakpoint(file, line, column);
+        var bp = FindBreakpoint(file, line, column, functionName);
         var ids = bp == null ? new List<int>() : new List<int>() { bp.Id };
 
         Protocol.SendEvent(new StoppedEvent(StoppedEvent.ReasonValue.Breakpoint)
@@ -479,11 +493,18 @@ sealed class VstuDebugAdapter : DebugAdapterBase, IListener
         session.Attach(address, port);
     }
 
-    BreakpointState? FindBreakpoint(string file, int line, int column)
+    BreakpointEntry? FindBreakpoint(string file, int line, int column, string functionName)
     {
-        if (breakpointsBySource.TryGetValue(file, out var breakpoints))
+        if (string.IsNullOrEmpty(functionName))
         {
-            return breakpoints.FirstOrDefault(b => b.Line == line && b.Column == column);
+            if (breakpointsBySource.TryGetValue(file, out var breakpoints))
+            {
+                return breakpoints.FirstOrDefault(b => b.Line == line && b.Column == column);
+            }
+        }
+        else
+        {
+            return functionBreakpoints.FirstOrDefault(b => b.Name == functionName);
         }
 
         return null;
