@@ -6,6 +6,7 @@ The extension works as a Unity debugger based on [Visual Studio Tools for Unity 
 
 ## Features
 
+* Function Breakpoints
 * Expression Conditional Breakpoints
 * Hit Count Conditional Breakpoints
     * '{hitCount}' or '{operator} {hitCount}'
